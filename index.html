@@ -6,23 +6,36 @@
 <meta name="theme-color" content="#F5F2EA">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="favicon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BP Financeiro">
 <title>BP Financeiro</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 :root{--paper:#F5F2EA;--paper2:#EDE9DE;--white:#FBF9F4;--ink:#0F1922;--gold:#8F7318;
---gold-l:#B69540;--navy:#16283C;--gray:#6E7681;--line:#DCD6C7;--green:#2F6B4F;--red:#9E3B2E;}
+--gold-l:#B69540;--navy:#16283C;--gray:#6E7681;--line:#DCD6C7;--green:#2F6B4F;--red:#9E3B2E;
+--navbg:rgba(245,242,234,.97);--sheetbg:rgba(15,25,34,.55);--inputbg:#FBF9F4;}
+html[data-t="dark"]{--paper:#0B1218;--paper2:#16222C;--white:#131D26;--ink:#F0EEE8;
+--gold:#B69540;--gold-l:#C9AC63;--navy:#20344A;--gray:#8C98A2;--line:#26363F;
+--green:#6EC896;--red:#DC6E5F;--navbg:rgba(11,18,24,.97);--sheetbg:rgba(0,0,0,.66);--inputbg:#16222C;}
+html{background:var(--paper);}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html{-webkit-text-size-adjust:100%;}
-body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;
+body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;transition:background .2s,color .2s;
 padding-bottom:calc(84px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased;
 overscroll-behavior-y:contain;}
 .app{max-width:560px;margin:0 auto;}
 header{padding:calc(18px + env(safe-area-inset-top)) 20px 10px;}
 .eb{display:flex;justify-content:space-between;align-items:center;}
 .eb .l{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.15em;color:var(--gold);}
-.eb .r{font-family:'JetBrains Mono';font-size:8.5px;letter-spacing:.1em;color:#A29A87;}
+.eb .r{display:flex;align-items:center;gap:10px;}
+.eb .sv{font-family:'JetBrains Mono';font-size:8.5px;letter-spacing:.1em;color:var(--gray);}
+.tt{width:52px;height:28px;border-radius:99px;background:var(--paper2);border:1px solid var(--line);
+position:relative;cursor:pointer;flex:0 0 auto;padding:0;touch-action:manipulation;}
+.tt i{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+background:var(--gold);transition:transform .22s;display:flex;align-items:center;justify-content:center;}
+html[data-t="dark"] .tt i{transform:translateX(24px);}
+.tt svg{width:13px;height:13px;fill:none;stroke:var(--paper);stroke-width:2.2;stroke-linecap:round;}
 h1{font-family:'Playfair Display';font-weight:400;font-size:29px;line-height:1.06;margin-top:9px;}
 h1 em{font-style:italic;color:var(--gold);}
 .sub{font-family:'JetBrains Mono';font-size:9px;color:var(--gray);letter-spacing:.1em;margin-top:8px;}
@@ -109,14 +122,14 @@ cursor:pointer;text-transform:uppercase;touch-action:manipulation;}
 .f{margin-bottom:12px;}
 .f label{display:block;font-family:'JetBrains Mono';font-size:8.5px;letter-spacing:.12em;
 color:var(--gray);text-transform:uppercase;margin-bottom:6px;}
-.f input,.f select{width:100%;background:var(--white);border:1px solid var(--line);border-radius:4px;
+.f input,.f select{width:100%;background:var(--inputbg);border:1px solid var(--line);border-radius:4px;
 color:var(--ink);font-family:'Inter';font-size:16px;padding:13px;outline:none;min-height:50px;
 -webkit-appearance:none;appearance:none;}
-.f select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E7681' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+.f select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238C98A2' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
 background-repeat:no-repeat;background-position:right 13px center;background-size:16px;padding-right:40px;}
 .f input:focus,.f select:focus{border-color:var(--gold);}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
-.sheet{position:fixed;inset:0;background:rgba(15,25,34,.55);z-index:70;display:none;align-items:flex-end;}
+.sheet{position:fixed;inset:0;background:var(--sheetbg);z-index:70;display:none;align-items:flex-end;}
 .sheet.on{display:flex;}
 .sb{width:100%;max-width:560px;margin:0 auto;background:var(--paper);border-radius:14px 14px 0 0;
 padding:22px 20px calc(24px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;}
@@ -130,7 +143,7 @@ z-index:80;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 .empty{text-align:center;padding:34px 20px;color:var(--gray);font-size:13px;line-height:1.6;}
 nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:560px;
-background:rgba(245,242,234,.97);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+background:var(--navbg);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
 border-top:1px solid var(--line);display:flex;z-index:50;padding:8px 6px calc(10px + env(safe-area-inset-bottom));}
 nav button{flex:1;background:none;border:none;padding:8px 2px;min-height:52px;cursor:pointer;
 display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;touch-action:manipulation;}
@@ -146,7 +159,9 @@ nav button.on .t{color:var(--gold);font-weight:700;}
 <body>
 <div class="app">
 <header>
-  <div class="eb"><span class="l" id="eb">// VISÃO GERAL</span><span class="r" id="sv">salvo</span></div>
+  <div class="eb"><span class="l" id="eb">// VISÃO GERAL</span>
+   <span class="r"><span class="sv" id="sv">salvo</span>
+    <button class="tt" id="tt" aria-label="Alternar tema"><i id="tti"></i></button></span></div>
   <h1 id="ti">Painel <em>do mês</em></h1>
   <div class="sub" id="su"></div>
 </header>
@@ -174,7 +189,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ═══════ ESTADO ═══════ */
 const SEED={
- config:{aporte:2500,taxa:0.9,mes:"Agosto"},
+ config:{aporte:2500,taxa:0.9,mes:"Agosto",tema:null},
  pagar:[
   {id:uid(),d:"05",n:"Moradia",f:"Débito automático",v:1200,s:1},
   {id:uid(),d:"05",n:"Plano de saúde",f:"Débito automático",v:380,s:1},
@@ -204,20 +219,77 @@ const SEED={
   {id:uid(),n:"Reserva de oportunidade",d:"curso, viagem, imprevisto",m:6000,a:2400}]
 };
 const MESES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-let D=JSON.parse(JSON.stringify(SEED)), view="painel", store=false;
+let D=JSON.parse(JSON.stringify(SEED)), view="painel";
+
+/* ═══════ TEMA ═══════ */
+const SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
+function aplicaTema(t){
+  document.documentElement.setAttribute('data-t',t);
+  document.getElementById('tti').innerHTML = t==='dark'?MOON:SUN;
+  const mc=document.querySelector('meta[name="theme-color"]');
+  if(mc) mc.setAttribute('content', t==='dark'?'#0B1218':'#F5F2EA');
+}
+async function setTema(t){
+  D.config.tema=t; aplicaTema(t); save();
+}
+
+/* ═══════ PERSISTÊNCIA ═══════ */
+const KEY="bp-financeiro";
+const DB={
+  modo:"memoria", mem:null,
+  init(){
+    try{
+      const t="__t"; localStorage.setItem(t,"1"); localStorage.removeItem(t);
+      this.modo="local"; return;
+    }catch(e){}
+    if(window.storage?.get){ this.modo="host"; return; }
+    this.modo="memoria";
+  },
+  async ler(){
+    try{
+      if(this.modo==="local"){ const v=localStorage.getItem(KEY); return v?JSON.parse(v):null; }
+      if(this.modo==="host"){ const r=await window.storage.get(KEY); return r?.value?JSON.parse(r.value):null; }
+      return this.mem;
+    }catch(e){ return null; }
+  },
+  async gravar(obj){
+    const txt=JSON.stringify(obj);
+    try{
+      if(this.modo==="local"){ localStorage.setItem(KEY,txt); return true; }
+      if(this.modo==="host"){ await window.storage.set(KEY,txt); return true; }
+      this.mem=obj; return true;
+    }catch(e){
+      if(e && (e.name==="QuotaExceededError"||e.code===22)) toast("Armazenamento cheio");
+      return false;
+    }
+  },
+  async limpar(){
+    try{
+      if(this.modo==="local") localStorage.removeItem(KEY);
+      else if(this.modo==="host") await window.storage.delete(KEY);
+      this.mem=null;
+    }catch(e){}
+  }
+};
 
 async function load(){
-  try{ if(window.storage?.get){
-    try{const r=await window.storage.get("bp-fin"); if(r?.value) D=Object.assign(D,JSON.parse(r.value));}catch(e){}
-    store=true;
-  } else $('sv').textContent="sessão"; }catch(e){ $('sv').textContent="sessão"; }
+  DB.init();
+  const salvo=await DB.ler();
+  if(salvo) D=Object.assign(D,salvo);
+  if(DB.modo==="memoria") $('sv').textContent="sem salvar";
+  const auto = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light';
+  aplicaTema(D.config.tema || auto);
+  document.getElementById('tt').onclick=()=>
+    setTema(document.documentElement.getAttribute('data-t')==='dark'?'light':'dark');
   show("painel");
 }
 let sT;
 async function save(){
-  if(store){ try{ await window.storage.set("bp-fin",JSON.stringify(D)); }catch(e){} }
-  $('sv').textContent="salvando…";
-  clearTimeout(sT); sT=setTimeout(()=>$('sv').textContent="salvo",600);
+  const ok=await DB.gravar(D);
+  $('sv').textContent = ok ? "salvando…" : "erro ao salvar";
+  clearTimeout(sT);
+  sT=setTimeout(()=>{ $('sv').textContent = DB.modo==="memoria" ? "sem salvar" : "salvo"; },600);
 }
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on');
   setTimeout(()=>e.classList.remove('on'),1700); }
@@ -265,7 +337,50 @@ function painel(){
   [["Reserva de emergência",.4],["Investimento longo prazo",.4],["Reserva de oportunidade",.2]].forEach(a=>{
     h+=`<div class="tr"><div class="nm"><div class="t1">${a[0]}</div><div class="t2">${a[1]*100}% da sobra</div></div>
      <div class="vl" style="color:var(--gold)">${BRL(Math.max(0,c.sobra)*a[1])}</div></div>`;});
-  return h+`</div>`;
+  h+=`</div>
+  <div class="lab">Backup</div><div class="card">
+   <div class="tr"><div class="nm"><div class="t1">Seus dados</div>
+    <div class="t2" id="dbinfo">—</div></div></div>
+   <div class="actions" style="margin-top:4px;">
+    <button class="btn full" onclick="exportar()">Exportar</button>
+    <button class="btn full" onclick="importar()">Importar</button>
+   </div>
+   <button class="btn del full" style="margin-top:8px;" onclick="zerar()">Apagar tudo</button>
+  </div>
+  <div class="note">Os dados ficam <b>só neste aparelho</b>, no armazenamento do navegador. Exporte de vez em quando — limpar os dados do site apaga tudo.</div>`;
+  return h;
+}
+
+function exportar(){
+  const txt=JSON.stringify(D,null,2);
+  const nome="bp-financeiro-"+new Date().toISOString().slice(0,10)+".json";
+  try{
+    const b=new Blob([txt],{type:"application/json"});
+    const u=URL.createObjectURL(b);
+    const a=document.createElement("a"); a.href=u; a.download=nome; a.click();
+    setTimeout(()=>URL.revokeObjectURL(u),1500);
+    toast("Arquivo baixado");
+  }catch(e){
+    navigator.clipboard?.writeText(txt).then(()=>toast("Copiado"),()=>toast("Falhou"));
+  }
+}
+function importar(){
+  const i=document.createElement("input"); i.type="file"; i.accept="application/json,.json";
+  i.onchange=()=>{ const f=i.files[0]; if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{ try{
+      const o=JSON.parse(r.result);
+      if(!o || typeof o!=="object") throw 0;
+      D=Object.assign(JSON.parse(JSON.stringify(SEED)),o);
+      save(); aplicaTema(D.config.tema||"light"); show(view); toast("Dados importados");
+    }catch(e){ toast("Arquivo inválido"); } };
+    r.readAsText(f); };
+  i.click();
+}
+function zerar(){
+  if(!confirm("Apagar todos os lançamentos e metas?\nEssa ação não tem volta."))return;
+  DB.limpar().then(()=>{ D=JSON.parse(JSON.stringify(SEED)); D.pagar=[]; D.receber=[]; D.metas=[];
+    save(); show(view); toast("Tudo apagado"); });
 }
 
 function pagar(){
@@ -377,6 +492,13 @@ function show(v){
   const c=calc();
   $('su').textContent=`${D.config.mes.toUpperCase()} · SOBRA ${BRL(c.sobra)}`;
   $('main').innerHTML=V[v]();
+  const di=$('dbinfo');
+  if(di){
+    const n=D.pagar.length+D.receber.length+D.metas.length;
+    const kb=(JSON.stringify(D).length/1024).toFixed(1).replace(".",",");
+    const md={local:"salvo neste navegador",host:"salvo no app",memoria:"não está salvando"}[DB.modo];
+    di.textContent=`${n} registros · ${kb} KB · ${md}`;
+  }
   bindFluxo();
   window.scrollTo(0,0);
 }
@@ -466,7 +588,7 @@ function salvar(tp,id){
 }
 load();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{
-  navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+  navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(()=>{});});}
 </script>
 </body>
 </html>
