@@ -161,17 +161,16 @@ nav button.on .t{color:var(--gold);font-weight:700;}
 .subchip{font-family:'Inter';font-weight:600;font-size:13px;padding:8px 16px;border-radius:17px;border:1px solid var(--line);
 background:var(--white);color:var(--ink);cursor:pointer;transition:.15s;}
 .subchip.on{background:var(--ink);color:var(--paper);border-color:var(--ink);}
-.subcard{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;margin-bottom:11px;cursor:pointer;
-position:relative;transition:transform .1s;}
+.subcard{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:20px;margin-bottom:10px;cursor:pointer;
+transition:transform .1s;}
 .subcard:active{transform:scale(.99);}
-.subcard .ico{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--paper);flex:0 0 auto;
-display:flex;align-items:center;justify-content:center;font-family:'Playfair Display';font-size:19px;font-weight:600;}
+.subcard .ico{width:44px;height:44px;border-radius:50%;background:var(--ink);color:var(--paper);flex:0 0 auto;
+display:flex;align-items:center;justify-content:center;font-family:'Playfair Display';font-size:20px;font-weight:600;}
 .subcard .info{flex:1;min-width:0;}
 .subcard .t1{font-weight:700;font-size:17px;color:#0F1922;line-height:1.15;}
-.subcard .t2{font-size:12px;color:#33404A;margin-top:2px;}
-.subcard .cobra{position:absolute;right:14px;top:14px;background:var(--white);color:#0F1922;font-family:'JetBrains Mono';
-font-size:10px;font-weight:700;padding:6px 11px;border-radius:14px;white-space:nowrap;}
-.subcard .preco{position:absolute;right:16px;bottom:14px;font-family:'JetBrains Mono';font-weight:700;font-size:13px;color:#0F1922;}
+.subcard .t2{font-family:'JetBrains Mono';font-size:11px;color:#0F1922;opacity:.72;margin-top:4px;letter-spacing:.02em;}
+.subcard .cobra{background:rgba(255,255,255,.85);color:#0F1922;font-family:'JetBrains Mono';
+font-size:10px;font-weight:700;padding:8px 12px;border-radius:14px;white-space:nowrap;flex:0 0 auto;letter-spacing:.04em;text-transform:uppercase;}
 .subresumo{background:#B7D89A;border-radius:18px;padding:18px;margin:14px 0;}
 .subresumo .lab2{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.14em;color:#3A4D2A;}
 .subresumo .big{font-family:'Inter';font-weight:800;font-size:38px;color:#0F1922;margin-top:8px;line-height:1;}
@@ -187,13 +186,30 @@ border-radius:12px;padding:12px 16px;margin-top:14px;}
 .subgasto .fk{font-family:'JetBrains Mono';font-size:8px;letter-spacing:.12em;color:#8FA0B4;}
 .subgasto .fv{font-family:'Inter';font-weight:700;font-size:16px;color:var(--paper);margin-top:3px;}
 .subgasto .fd{width:1px;align-self:stretch;background:rgba(255,255,255,.14);}
+.temaseg{display:flex;gap:6px;background:var(--paper2);border-radius:14px;padding:4px;margin-top:6px;}
+.tseg{flex:1;padding:11px 8px;border:none;background:transparent;font-family:'Inter';font-weight:600;font-size:13px;
+color:var(--gray);border-radius:11px;cursor:pointer;transition:.15s;}
+.tseg.on{background:var(--white);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.saud{margin-bottom:16px;}
+.saud .s1{font-family:'Playfair Display';font-weight:400;font-size:24px;line-height:1.15;color:var(--ink);}
+.saud .s1 em,.saud .s1 strong{font-style:italic;color:var(--gold);font-weight:400;}
+.saud .s2{font-size:13px;color:var(--gray);margin-top:4px;}
+.mesescard{padding:18px 14px 14px;}
+.mesesbar{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;height:140px;}
+.mescol{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;}
+.mescol .mesv{font-family:'JetBrains Mono';font-size:9px;color:var(--gray);letter-spacing:.02em;}
+.mescol .mesbar{width:100%;height:88px;background:var(--paper2);border-radius:8px;display:flex;align-items:flex-end;overflow:hidden;}
+.mescol .mesbar span{display:block;width:100%;background:var(--gold);border-radius:8px;min-height:6px;}
+.mescol.on .mesbar span{background:var(--navy);}
+.mescol .mesk{font-family:'JetBrains Mono';font-size:9px;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;}
+.mescol.on .mesk{color:var(--gold);font-weight:700;}
+.mesnota{font-size:11px;color:var(--gray);margin-top:12px;text-align:center;}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="eb"><span class="l" id="eb">// VISÃO GERAL</span>
-   <span class="r"><button class="tt" id="tt" aria-label="Alternar tema"><i id="tti"></i></button></span></div>
+  <div class="eb"><span class="l" id="eb">// VISÃO GERAL</span></div>
   <h1 id="ti">Painel <em>do mês</em></h1>
   <div class="sub" id="su"></div>
 </header>
@@ -230,11 +246,11 @@ const SEED={
   {id:uid(),d:"10",n:"Celular",f:"Cartão",v:60,s:1},
   {id:uid(),d:"15",n:"Energia",f:"Boleto",v:180,s:0},
   {id:uid(),d:"15",n:"Água",f:"Boleto",v:70,s:0},
-  {id:uid(),d:"05",n:"Adobe CC",f:"Cartão",v:79.90,s:0,sub:1,ciclo:"mensal"},
-  {id:uid(),d:"10",n:"Vercel Pro",f:"Cartão",v:100,s:0,sub:1,ciclo:"mensal"},
-  {id:uid(),d:"12",n:"Figma",f:"Cartão",v:68,s:0,sub:1,ciclo:"mensal"},
-  {id:uid(),d:"15",n:"ChatGPT",f:"Cartão",v:116,s:0,sub:1,ciclo:"mensal"},
-  {id:uid(),d:"24",n:"Spotify",f:"Cartão",v:21.90,s:0,sub:1,ciclo:"anual"},
+  {id:uid(),d:"05",n:"Adobe CC",f:"Assinatura",v:79.90,s:0,sub:1,ciclo:"mensal"},
+  {id:uid(),d:"10",n:"Vercel Pro",f:"Assinatura",v:100,s:0,sub:1,ciclo:"mensal"},
+  {id:uid(),d:"12",n:"Figma",f:"Assinatura",v:68,s:0,sub:1,ciclo:"mensal"},
+  {id:uid(),d:"15",n:"ChatGPT",f:"Assinatura",v:116,s:0,sub:1,ciclo:"mensal"},
+  {id:uid(),d:"24",n:"Spotify",f:"Assinatura",v:21.90,s:0,sub:1,ciclo:"anual"},
   {id:uid(),d:"20",n:"Academia / Jiu-jitsu",f:"PIX",v:150,s:0},
   {id:uid(),d:"25",n:"Mercado",f:"Cartão",v:900,s:0},
   {id:uid(),d:"28",n:"Transporte",f:"Cartão",v:350,s:0},
@@ -267,6 +283,13 @@ function aplicaTema(t){
 }
 async function setTema(t){
   D.config.tema=t; aplicaTema(t); save();
+}
+function aplicaModo(){
+  const t=D.config.tema||'auto';
+  if(t==='auto'){
+    const dark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    aplicaTema(dark?'dark':'light');
+  } else aplicaTema(t);
 }
 
 /* ═══════ PERSISTÊNCIA ═══════ */
@@ -313,10 +336,12 @@ async function load(){
   const salvo=await DB.ler();
   if(salvo) D=Object.assign(D,salvo);
   if(DB.modo==="memoria"){ const sv=$('sv'); if(sv) sv.textContent="sem salvar"; }
-  const auto = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light';
-  aplicaTema(D.config.tema || auto);
-  document.getElementById('tt').onclick=()=>
-    setTema(document.documentElement.getAttribute('data-t')==='dark'?'light':'dark');
+  aplicaModo();
+  if(window.matchMedia){
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{
+      if((D.config.tema||'auto')==='auto') aplicaModo();
+    });
+  }
   show("painel");
 }
 let sT;
@@ -354,11 +379,48 @@ const META={painel:["// VISÃO GERAL","Painel <em>do mês</em>"],
 function painel(){
   const c=calc();
   const pct=c.entradas?Math.max(0,Math.min(100,Math.round(c.saidas/c.entradas*100))):0;
-  let h=`<div class="kpis">
+  const hora=new Date().getHours();
+  const sauda = hora<12?"Bom dia":hora<18?"Boa tarde":"Boa noite";
+  const nome = (D.config.nome||"").trim().split(" ")[0];
+  const MES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const hoje=new Date(); const mAtual=hoje.getMonth();
+  // gasto mês atual (todas as saídas) e projeção próximos 5 meses:
+  // - assinaturas mensais entram todo mês
+  // - assinaturas anuais entram 1x no mês do dia cadastrado (aprox: mesmo mês)
+  // - contas não-assinatura: repete mensalmente (base)
+  const base=D.pagar.filter(p=>!p.sub).reduce((a,b)=>a+ +b.v,0);
+  const subMensal=D.pagar.filter(p=>p.sub && p.ciclo!=="anual").reduce((a,b)=>a+ +b.v,0);
+  const subAnual=D.pagar.filter(p=>p.sub && p.ciclo==="anual");
+  const meses=[];
+  for(let i=0;i<6;i++){
+    const m=(mAtual+i)%12;
+    let tot=base+subMensal;
+    // anual: cobra no mês atual como referência
+    if(i===0) tot+=subAnual.reduce((a,b)=>a+ +b.v,0);
+    meses.push({m,label:MES[m].slice(0,3),tot,atual:i===0});
+  }
+  const maxMes=Math.max(...meses.map(x=>x.tot),1);
+
+  let h=`<div class="saud">
+    <div class="s1">${sauda}${nome?`, ${nome}`:""}</div>
+    <div class="s2">Aqui está o resumo do seu ${MES[mAtual].toLowerCase()}.</div>
+   </div>
+   <div class="kpis">
    <div class="kpi"><div class="k">Entradas</div><div class="v">${BRL(c.entradas)}</div><div class="s">${D.receber.length} lançamentos</div></div>
    <div class="kpi"><div class="k">Saídas</div><div class="v">${BRL(c.saidas)}</div><div class="s">${D.pagar.length} lançamentos</div></div>
    <div class="kpi"><div class="k">Sobra</div><div class="v ${c.sobra>=0?'g':'rd'}">${BRL(c.sobra)}</div><div class="s">${c.sobra>=0?'vai para investimento':'atenção: negativo'}</div></div>
    <div class="kpi"><div class="k">Taxa de poupança</div><div class="v ${c.taxa>=30?'gr':'rd'}">${c.taxa}%</div><div class="s">meta: acima de 30%</div></div>
+  </div>
+  <div class="lab">Gastos por mês · previsão</div>
+  <div class="card mesescard">
+   <div class="mesesbar">
+    ${meses.map(x=>`<div class="mescol ${x.atual?'on':''}">
+      <div class="mesv">${BRL(x.tot).replace('R$ ','')}</div>
+      <div class="mesbar"><span style="height:${Math.round(x.tot/maxMes*100)}%"></span></div>
+      <div class="mesk">${x.label}</div>
+    </div>`).join("")}
+   </div>
+   <div class="mesnota">Base: contas atuais + assinaturas recorrentes.</div>
   </div>
   <div class="lab">Proporção</div>
   <div class="split"><div style="flex:${pct};background:var(--paper2);color:var(--gray);">${pct}% SAÍDAS</div>
@@ -399,7 +461,7 @@ function importar(){
       const o=JSON.parse(r.result);
       if(!o || typeof o!=="object") throw 0;
       D=Object.assign(JSON.parse(JSON.stringify(SEED)),o);
-      save(); aplicaTema(D.config.tema||"light"); show(view); toast("Dados importados");
+      save(); aplicaModo(); show(view); toast("Dados importados");
     }catch(e){ toast("Arquivo inválido"); } };
     r.readAsText(f); };
   i.click();
@@ -451,11 +513,10 @@ function assinaturas(){
   let h=`<div class="subchips">
     ${[["todas","Todas"],["mensais","Mensais"],["anuais","Anuais"]].map(([k,l])=>
       `<button class="subchip ${subFiltro===k?'on':''}" onclick="setSubFiltro('${k}')">${l}</button>`).join("")}
-    <button class="btn sm" style="margin-left:auto;" onclick="abrirSub()">+ Assinatura</button>
    </div>`;
 
   if(!subs.length){
-    return h+`<div class="empty">Nenhuma assinatura ainda.<br>Marque uma conta como <b>recorrente</b> em Pagar, ou toque em <b>+ Assinatura</b>.</div>`;
+    return h+`<div class="empty">Nenhuma assinatura ainda.<br>Em <b>Pagar</b>, escolha a forma <b>Assinatura</b> ao criar a conta.</div>`;
   }
   if(!lista.length) h+=`<div class="empty">Nenhuma assinatura ${subFiltro==="anuais"?"anual":"mensal"}.</div>`;
 
@@ -463,9 +524,11 @@ function assinaturas(){
     const col=COR[D.pagar.filter(p=>p.sub).findIndex(p=>p.id===s.id)%COR.length];
     h+=`<div class="subcard" style="background:${col}" onclick="abrir('pagar','${s.id}')">
       <div class="ico">${(s.n[0]||'?').toUpperCase()}</div>
-      <div class="info"><div class="t1">${s.n}</div><div class="t2">Recorrente · ${s.ciclo||'mensal'}</div></div>
-      <div class="cobra">cobra dia ${s.d}</div>
-      <div class="preco">${BRL(s.v)}</div>
+      <div class="info">
+        <div class="t1">${s.n}</div>
+        <div class="t2">${BRL(s.v)} · ${s.ciclo||'mensal'}</div>
+      </div>
+      <div class="cobra">dia ${s.d}</div>
     </div>`;
   });
 
@@ -487,8 +550,6 @@ function assinaturas(){
    </div>`;
   return h;
 }
-function abrirSub(){ abrir('pagar'); setTimeout(()=>{ const c=$('i_sub'); if(c&&!c.checked){c.checked=true; c.onchange();} },30); }
-
 function receber(){
   const c=calc();
   const L=["A RECEBER","PARCIAL","RECEBIDO"], C=["no","pa","ok"];
@@ -509,15 +570,18 @@ function receber(){
 }
 
 function config(){
-  const dark=document.documentElement.getAttribute('data-t')==='dark';
+  const modo=D.config.tema||'auto';
   let h=`<div class="lab">Perfil</div><div class="card">
-   <div class="f"><label>Nome</label><input id="cf_nome" value="${D.config.nome||''}" placeholder="Seu nome"></div>
-   <div class="f"><label>CPF</label><input id="cf_cpf" inputmode="numeric" value="${D.config.cpf||''}" placeholder="000.000.000-00"></div>
+   <div class="f"><label>Nome</label><input id="cf_nome" value="${D.config.nome||''}"></div>
+   <div class="f"><label>CPF</label><input id="cf_cpf" inputmode="numeric" value="${D.config.cpf||''}"></div>
    <button class="btn g full" style="margin-top:4px;" onclick="salvarPerfil()">Salvar perfil</button>
   </div>
   <div class="lab">Tema</div><div class="card">
-   <div class="tr"><div class="nm"><div class="t1">Tema escuro</div><div class="t2">${dark?'ativado':'desativado'}</div></div>
-    <button class="btn sm" onclick="setTema('${dark?'light':'dark'}');show('config')">${dark?'Usar claro':'Usar escuro'}</button></div>
+   <div class="tr"><div class="nm"><div class="t1">Aparência</div><div class="t2">Segue o tema do celular por padrão</div></div></div>
+   <div class="temaseg">
+    ${[["auto","Automático"],["light","Claro"],["dark","Escuro"]].map(([k,l])=>
+     `<button class="tseg ${modo===k?'on':''}" onclick="setTema('${k}');show('config')">${l}</button>`).join("")}
+   </div>
   </div>
   <div class="lab">Backup</div><div class="card">
    <div class="tr"><div class="nm"><div class="t1">Seus dados</div><div class="t2" id="dbinfo">—</div></div></div>
@@ -613,32 +677,30 @@ function abrir(tp,id){
   if(tp==="pagar"){
     titulo=it?"Editar <em>conta</em>":"Nova <em>conta</em>"; sub="Preencha e toque em salvar.";
     h=`<div class="duo">
-      <div class="f"><label>Dia do vencimento</label><input id="i_d" inputmode="numeric" maxlength="2" value="${it?it.d:''}" placeholder="15"></div>
-      <div class="f"><label>Valor</label><input id="i_v" inputmode="decimal" value="${it?it.v:''}" placeholder="180"></div></div>
-     <div class="f"><label>Descrição</label><input id="i_n" value="${it?it.n:''}" placeholder="Energia"></div>
-     <div class="f"><label>Forma de pagamento</label><select id="i_f">
-      ${["Boleto","Cartão","PIX","Débito automático","Dinheiro"].map(o=>`<option ${it&&it.f===o?'selected':''}>${o}</option>`).join("")}</select></div>
-     <div class="f"><label>É uma assinatura?</label>
-      <label class="chk"><input type="checkbox" id="i_sub" ${it&&it.sub?'checked':''} onchange="document.getElementById('subciclo').style.display=this.checked?'block':'none'"> Cobrança recorrente</label></div>
-     <div class="f" id="subciclo" style="display:${it&&it.sub?'block':'none'}"><label>Ciclo</label><select id="i_ciclo">
+      <div class="f"><label>Dia do vencimento</label><input id="i_d" inputmode="numeric" maxlength="2" value="${it?it.d:''}"></div>
+      <div class="f"><label>Valor</label><input id="i_v" inputmode="decimal" value="${it?it.v:''}"></div></div>
+     <div class="f"><label>Descrição</label><input id="i_n" value="${it?it.n:''}"></div>
+     <div class="f"><label>Forma de pagamento</label><select id="i_f" onchange="document.getElementById('subciclo').style.display=this.value==='Assinatura'?'block':'none'">
+      ${["Boleto","Cartão","PIX","Débito automático","Dinheiro","Assinatura"].map(o=>`<option ${it&&it.f===o?'selected':''}>${o}</option>`).join("")}</select></div>
+     <div class="f" id="subciclo" style="display:${it&&it.f==='Assinatura'?'block':'none'}"><label>Ciclo</label><select id="i_ciclo">
       ${["mensal","anual"].map(o=>`<option ${it&&it.ciclo===o?'selected':''}>${o}</option>`).join("")}</select></div>`;
   } else if(tp==="receber"){
     titulo=it?"Editar <em>recebível</em>":"Novo <em>recebível</em>"; sub="Projeto ou receita recorrente.";
     h=`<div class="duo">
-      <div class="f"><label>Dia previsto</label><input id="i_d" inputmode="numeric" maxlength="2" value="${it?it.d:''}" placeholder="20"></div>
-      <div class="f"><label>Valor</label><input id="i_v" inputmode="decimal" value="${it?it.v:''}" placeholder="1500"></div></div>
-     <div class="f"><label>Origem</label><input id="i_n" value="${it?it.n:''}" placeholder="Cliente X — projeto"></div>
+      <div class="f"><label>Dia previsto</label><input id="i_d" inputmode="numeric" maxlength="2" value="${it?it.d:''}"></div>
+      <div class="f"><label>Valor</label><input id="i_v" inputmode="decimal" value="${it?it.v:''}"></div></div>
+     <div class="f"><label>Origem</label><input id="i_n" value="${it?it.n:''}"></div>
      <div class="duo">
       <div class="f"><label>Tipo</label><select id="i_t">
        ${["Projeto","Recorrente"].map(o=>`<option ${it&&it.t===o?'selected':''}>${o}</option>`).join("")}</select></div>
-      <div class="f"><label>Condição</label><input id="i_f" value="${it?it.f:''}" placeholder="à vista"></div></div>`;
+      <div class="f"><label>Condição</label><input id="i_f" value="${it?it.f:''}"></div></div>`;
   } else if(tp==="meta"){
     titulo=it?"Editar <em>meta</em>":"Nova <em>meta</em>"; sub="Quanto quer juntar e quanto já tem.";
-    h=`<div class="f"><label>Nome da meta</label><input id="i_n" value="${it?it.n:''}" placeholder="Reserva de emergência"></div>
-     <div class="f"><label>Descrição</label><input id="i_d2" value="${it?it.d:''}" placeholder="6 meses de custo fixo"></div>
+    h=`<div class="f"><label>Nome da meta</label><input id="i_n" value="${it?it.n:''}"></div>
+     <div class="f"><label>Descrição</label><input id="i_d2" value="${it?it.d:''}"></div>
      <div class="duo">
-      <div class="f"><label>Valor da meta</label><input id="i_m" inputmode="decimal" value="${it?it.m:''}" placeholder="21900"></div>
-      <div class="f"><label>Já guardado</label><input id="i_a" inputmode="decimal" value="${it?it.a:''}" placeholder="8400"></div></div>`;
+      <div class="f"><label>Valor da meta</label><input id="i_m" inputmode="decimal" value="${it?it.m:''}"></div>
+      <div class="f"><label>Já guardado</label><input id="i_a" inputmode="decimal" value="${it?it.a:''}"></div></div>`;
   } else if(tp==="params"){
     titulo="Parâmetros de <em>investimento</em>"; sub="Usados em toda a projeção.";
     h=`<div class="duo">
@@ -667,7 +729,7 @@ function salvar(tp,id){
     if(id){Object.assign(D.metas.find(x=>x.id===id),o);} else {D.metas.push({id:uid(),...o});}
   } else {
     const v=parseFloat(g('i_v').replace(/\./g,"").replace(",","."))||0;
-    const isSub=$('i_sub')?$('i_sub').checked:false;
+    const isSub=g('i_f')==='Assinatura';
     const o = tp==="pagar"
       ? {d:(g('i_d')||"01").padStart(2,"0"),n:g('i_n')||"Sem nome",f:g('i_f'),v,sub:isSub?1:0,ciclo:isSub?(g('i_ciclo')||"mensal"):""}
       : {d:(g('i_d')||"01").padStart(2,"0"),n:g('i_n')||"Sem nome",t:g('i_t'),f:g('i_f'),v};
