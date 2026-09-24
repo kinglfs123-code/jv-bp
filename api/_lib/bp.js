@@ -7,7 +7,7 @@ const TTL = 60 * 60 * 24 * 90;       // compras não sincronizadas expiram em 90
 // Autenticação: Authorization: Bearer <BP_WEBHOOK_TOKEN>
 function autorizado(req) {
   const esperado = process.env.BP_WEBHOOK_TOKEN || '';
-  if (esperado.length < 24) return false; // token fraco/ausente = tudo bloqueado
+  if (esperado.length < 16) return false; // token fraco/ausente = tudo bloqueado
   const h = String(req.headers.authorization || '');
   const recebido = h.startsWith('Bearer ') ? h.slice(7).trim() : '';
   const a = crypto.createHash('sha256').update(recebido).digest();
