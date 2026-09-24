@@ -2,7 +2,8 @@
 const crypto = require('crypto');
 
 const INBOX = 'bp:inbox';            // hash: id -> compra (JSON)
-const TTL = 60 * 60 * 24 * 90;       // compras não sincronizadas expiram em 90 dias
+const TTL = 60 * 60 * 24 * 90;       // a chave inteira some após 90 dias sem compras
+const MAX_DIAS = 60;                 // cada compra fica 60 dias disponível para todos os aparelhos
 
 // Autenticação: Authorization: Bearer <BP_WEBHOOK_TOKEN>
 function autorizado(req) {
@@ -36,6 +37,8 @@ function parseValor(v) {
   let s = String(v == null ? '' : v).replace(/[^\d,.\-]/g, '');
   if (s.includes(',') && s.includes('.')) {
     s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  } else if (/^\d{1,3}(,\d{3})+$/.test(s)) {
+    s = s.replace(/,/g, '');
   } else if (s.includes(',')) {
     s = s.replace(/\./g, '').replace(',', '.');
   } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
@@ -60,4 +63,4 @@ function json(res, status, obj) {
   return res.status(status).json(obj);
 }
 
-module.exports = { INBOX, TTL, autorizado, redis, parseValor, texto, lerBody, json, crypto };
+module.exports = { INBOX, TTL, MAX_DIAS, autorizado, redis, parseValor, texto, lerBody, json, crypto };
