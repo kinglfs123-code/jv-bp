@@ -241,6 +241,12 @@ color:var(--gray);border-radius:11px;cursor:pointer;transition:.15s;}
 .mescol .mesk{font-family:'JetBrains Mono';font-size:9px;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;}
 .mescol.on .mesk{color:var(--gold);font-weight:700;}
 .mesnota{font-size:11px;color:var(--gray);margin-top:12px;text-align:center;}
+.fatura{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--navy);
+border-radius:14px;padding:16px 18px;margin-top:14px;}
+.fatura .fk2{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.12em;color:#8FA0B4;}
+.fatura .fv2{font-family:'Playfair Display';font-size:22px;color:var(--paper);margin-top:4px;line-height:1;white-space:nowrap;}
+.fatura .fv2 span{font-family:'Inter';font-size:11px;color:#8FA0B4;}
+.fatura .btn{flex:0 0 auto;}
 .auth{position:fixed;inset:0;z-index:200;background:var(--paper);display:flex;align-items:center;justify-content:center;padding:24px;}
 .auth .acard{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:24px;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.06);}
 .auth .ab{display:flex;background:var(--paper2);border-radius:12px;padding:4px;margin-bottom:20px;}
@@ -308,7 +314,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ═══════ ESTADO ═══════ */
 const SEED={
- config:{aporte:2500,taxa:0.9,mes:"Agosto",tema:"auto",nome:"",cpf:""},
+ config:{aporte:2500,taxa:0.9,mes:"Agosto",compAtual:"2026-08",tema:"auto",nome:"",cpf:""},
  pagar:[
   {id:uid(),d:"05",n:"Moradia",f:"Débito automático",v:1200,s:1},
   {id:uid(),d:"05",n:"Plano de saúde",f:"Débito automático",v:380,s:1},
@@ -383,6 +389,11 @@ async function load(){
   const salvo=await DB.ler();
   if(salvo) D=Object.assign(D,salvo);
   if(DB.modo==="memoria"){ const sv=$('sv'); if(sv) sv.textContent="sem salvar"; }
+  // migração: garante competência em cada conta
+  if(!D.config.compAtual) D.config.compAtual="2026-08";
+  D.pagar.forEach(p=>{ if(!p.comp) p.comp=compFromDt(p.dt)||D.config.compAtual; });
+  D.receber.forEach(r=>{ if(!r.comp) r.comp=compFromDt(r.dt)||D.config.compAtual; });
+  if(!D.hist) D.hist=[]; if(!D.log) D.log=[];
   aplicaModo();
   show("painel");
 }
@@ -396,14 +407,25 @@ async function save(){
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on');
   setTimeout(()=>e.classList.remove('on'),1700); }
 
+/* ═══════ COMPETÊNCIA (mês da conta) ═══════ */
+const NOMES_MES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+function compFromDt(dt){ return dt && dt.length>=7 ? dt.slice(0,7) : null; }
+function monthName(comp){ const p=(comp||"").split("-"); const m=+p[1]; return NOMES_MES[(m-1+12)%12]||""; }
+function compMais(comp,n){ let [y,m]=(comp||"2026-01").split("-").map(Number); const t=(y*12+(m-1))+n; y=Math.floor(t/12); m=(t%12)+1; return y+"-"+String(m).padStart(2,"0"); }
+function nextComp(comp){ return compMais(comp,1); }
+function shiftDt(dt,comp,dfb){ const day = dt&&dt.length>=10 ? dt.slice(8,10) : (dfb||"01"); return comp+"-"+day; }
+function curComp(){ return D.config.compAtual; }
+function inCur(x){ return (x.comp||D.config.compAtual)===D.config.compAtual; }
+
 /* ═══════ CÁLCULO ═══════ */
 function calc(){
-  const saidas=D.pagar.reduce((a,b)=>a+ +b.v,0);
-  const pago=D.pagar.filter(p=>p.s).reduce((a,b)=>a+ +b.v,0);
-  const entradas=D.receber.reduce((a,b)=>a+ +b.v,0);
-  const receb=D.receber.filter(r=>r.s===2).reduce((a,b)=>a+ +b.v,0)
-             +D.receber.filter(r=>r.s===1).reduce((a,b)=>a+ +b.v/2,0);
-  const recor=D.receber.filter(r=>r.t==="Recorrente").reduce((a,b)=>a+ +b.v,0);
+  const P=D.pagar.filter(inCur), R=D.receber.filter(inCur);
+  const saidas=P.reduce((a,b)=>a+ +b.v,0);
+  const pago=P.filter(p=>p.s).reduce((a,b)=>a+ +b.v,0);
+  const entradas=R.reduce((a,b)=>a+ +b.v,0);
+  const receb=R.filter(r=>r.s===2).reduce((a,b)=>a+ +b.v,0)
+             +R.filter(r=>r.s===1).reduce((a,b)=>a+ +b.v/2,0);
+  const recor=R.filter(r=>r.t==="Recorrente").reduce((a,b)=>a+ +b.v,0);
   const sobra=entradas-saidas;
   const saldo=receb-pago;
   return {saidas,pago,aberto:saidas-pago,entradas,receb,areceber:entradas-receb,
@@ -426,37 +448,32 @@ function painel(){
   const sauda = hora<12?"Bom dia":hora<18?"Boa tarde":"Boa noite";
   const nome = (D.config.nome||"").trim().split(" ")[0];
   const MES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-  const hoje=new Date(); const mAtual=hoje.getMonth();
-  // gasto mês atual (todas as saídas) e projeção próximos 5 meses:
-  // - assinaturas mensais entram todo mês
-  // - assinaturas anuais entram 1x no mês do dia cadastrado (aprox: mesmo mês)
-  // - contas não-assinatura: repete mensalmente (base)
-  const base=D.pagar.filter(p=>!p.sub).reduce((a,b)=>a+ +b.v,0);
-  const basePago=D.pagar.filter(p=>!p.sub && p.s).reduce((a,b)=>a+ +b.v,0);
-  const subMensal=D.pagar.filter(p=>p.sub && p.ciclo!=="anual").reduce((a,b)=>a+ +b.v,0);
-  const subMensalPago=D.pagar.filter(p=>p.sub && p.ciclo!=="anual" && p.s).reduce((a,b)=>a+ +b.v,0);
-  const subAnual=D.pagar.filter(p=>p.sub && p.ciclo==="anual");
-  const subAnualPago=subAnual.filter(p=>p.s).reduce((a,b)=>a+ +b.v,0);
+  const cur=D.config.compAtual;
+  const abertoAtual=D.pagar.filter(inCur).filter(p=>!p.s).reduce((a,b)=>a+ +b.v,0);
+  const projMensal=D.pagar.filter(p=>p.sub && p.ciclo!=="anual" && inCur(p)).reduce((a,b)=>a+ +b.v,0);
   const meses=[];
   for(let i=0;i<6;i++){
-    const m=(mAtual+i)%12;
-    let tot=base+subMensal;
-    if(i===0) tot+=subAnual.reduce((a,b)=>a+ +b.v,0);
-    // no mês atual: subtrai o que já foi pago
-    if(i===0) tot -= (basePago+subMensalPago+subAnualPago);
-    meses.push({m,label:MES[m].slice(0,3),tot,atual:i===0});
+    const comp=compMais(cur,i);
+    const mi=(+comp.split("-")[1])-1;
+    const tot = i===0 ? abertoAtual : projMensal;
+    meses.push({comp,label:MES[mi].slice(0,3),tot,atual:i===0});
   }
   const maxMes=Math.max(...meses.map(x=>x.tot),1);
 
   let h=`<div class="saud">
     <div class="s1">${sauda}${nome?`, ${nome}`:""}</div>
-    <div class="s2">Aqui está o resumo do seu ${(D.config.mes||MES[mAtual]).toLowerCase()}.</div>
+    <div class="s2">Aqui está o resumo do seu ${(D.config.mes||"mês").toLowerCase()}.</div>
    </div>
    <div class="kpis">
-   <div class="kpi"><div class="k">Entradas</div><div class="v">${BRL(c.entradas)}</div><div class="s">${D.receber.length} lançamentos</div></div>
-   <div class="kpi"><div class="k">Saídas</div><div class="v">${BRL(c.saidas)}</div><div class="s">${D.pagar.length} lançamentos</div></div>
+   <div class="kpi"><div class="k">Entradas</div><div class="v">${BRL(c.entradas)}</div><div class="s">${D.receber.filter(inCur).length} lançamentos</div></div>
+   <div class="kpi"><div class="k">Saídas</div><div class="v">${BRL(c.saidas)}</div><div class="s">${D.pagar.filter(inCur).length} lançamentos</div></div>
    <div class="kpi"><div class="k">Sobra</div><div class="v ${c.sobra>=0?'g':'rd'}">${BRL(c.sobra)}</div><div class="s">${c.sobra>=0?'vai para investimento':'atenção: negativo'}</div></div>
    <div class="kpi"><div class="k">Taxa de poupança</div><div class="v ${c.taxa>=30?'gr':'rd'}">${c.taxa}%</div><div class="s">meta: acima de 30%</div></div>
+  </div>
+  <div class="fatura">
+   <div class="fatx"><div class="fk2">FATURA DE ${(D.config.mes||'').toUpperCase()}</div>
+    <div class="fv2">${BRL(c.aberto)} <span>em aberto</span></div></div>
+   <button class="btn g" onclick="fecharFatura()">Finalizar mês →</button>
   </div>
   <div class="lab">Em aberto por mês</div>
   <div class="card mesescard">
@@ -473,7 +490,7 @@ function painel(){
   <div class="split"><div style="flex:${pct};background:var(--paper2);color:var(--gray);">${pct}% SAÍDAS</div>
    <div style="flex:${100-pct};background:var(--gold);color:var(--paper);">${100-pct}% SOBRA</div></div>
   <div class="lab">Situação do mês</div><div class="card">
-   <div class="tr"><div class="nm"><div class="t1">Contas já pagas</div><div class="t2">${D.pagar.filter(p=>p.s).length} de ${D.pagar.length}</div></div><div class="vl" style="color:var(--green)">${BRL(c.pago)}</div></div>
+   <div class="tr"><div class="nm"><div class="t1">Contas já pagas</div><div class="t2">${D.pagar.filter(inCur).filter(p=>p.s).length} de ${D.pagar.filter(inCur).length}</div></div><div class="vl" style="color:var(--green)">${BRL(c.pago)}</div></div>
    <div class="tr"><div class="nm"><div class="t1">Contas em aberto</div><div class="t2">vencem neste mês</div></div><div class="vl" style="color:var(--red)">${BRL(c.aberto)}</div></div>
    <div class="tr"><div class="nm"><div class="t1">Já recebido</div><div class="t2">inclui parciais</div></div><div class="vl" style="color:var(--green)">${BRL(c.receb)}</div></div>
    <div class="tr"><div class="nm"><div class="t1">A receber</div><div class="t2">previsto até o fim do mês</div></div><div class="vl" style="color:var(--red)">${BRL(c.areceber)}</div></div>
@@ -521,26 +538,27 @@ function zerar(){
 
 function pagar(){
   const c=calc();
+  const lista=D.pagar.filter(inCur);
   let h=`<div class="trio">
    <div class="b"><div class="k">Já pago</div><div class="v" style="color:var(--green)">${BRL(c.pago)}</div></div>
    <div class="b"><div class="k">Em aberto</div><div class="v" style="color:var(--red)">${BRL(c.aberto)}</div></div>
    <div class="b"><div class="k">% da renda</div><div class="v">${c.entradas?Math.round(c.saidas/c.entradas*100):0}%</div></div>
   </div>
-  <div class="lab"><span>Lançamentos</span><button class="btn sm" onclick="abrir('pagar')">+ Nova conta</button></div><div class="card">`;
-  if(!D.pagar.length) h+=`<div class="empty">Nenhuma conta ainda.<br>Toque em <b>+ Nova conta</b> para começar.</div>`;
-  D.pagar.slice().sort((a,b)=>a.d.localeCompare(b.d)).forEach(p=>{
+  <div class="lab"><span>Lançamentos · ${D.config.mes}</span><button class="btn sm" onclick="abrir('pagar')">+ Nova conta</button></div><div class="card">`;
+  if(!lista.length) h+=`<div class="empty">Nenhuma conta em ${D.config.mes}.<br>Toque em <b>+ Nova conta</b> para começar.</div>`;
+  lista.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).forEach(p=>{
     h+=`<div class="tr"><div class="dt">${p.d}</div>
-     <div class="nm" onclick="abrir('pagar','${p.id}')"><div class="t1">${p.n}</div><div class="t2">${p.f}</div></div>
+     <div class="nm" onclick="abrir('pagar','${p.id}')"><div class="t1">${p.n}</div><div class="t2">${p.f}${p.sub?' · '+(p.ciclo||'mensal'):''}</div></div>
      <div style="text-align:right;flex:0 0 auto;"><div class="vl">${BRL(p.v)}</div>
       <div style="margin-top:5px;"><button class="st ${p.s?'ok':'no'}" onclick="tog('pagar','${p.id}')">${p.s?'PAGO':'ABERTO'}</button></div></div></div>`;
   });
-  return h+`<div class="tot"><span class="l">Total do mês</span><span class="v">${BRL(c.saidas)}</span></div></div>`;
+  return h+`<div class="tot"><span class="l">Total de ${D.config.mes}</span><span class="v">${BRL(c.saidas)}</span></div></div>`;
 }
 
 let subFiltro="todas";
 function setSubFiltro(f){ subFiltro=f; show('assinaturas'); }
 function assinaturas(){
-  const subs=D.pagar.filter(p=>p.sub);
+  const subs=D.pagar.filter(p=>p.sub && inCur(p));
   const mensal=subs.filter(s=>s.ciclo!=="anual");
   const anual=subs.filter(s=>s.ciclo==="anual");
   // custo mensal médio: mensais cheios + anuais/12
@@ -605,9 +623,10 @@ function receber(){
    <div class="b"><div class="k">A receber</div><div class="v" style="color:var(--red)">${BRL(c.areceber)}</div></div>
    <div class="b"><div class="k">Recorrente</div><div class="v" style="color:var(--gold)">${BRL(c.recor)}</div></div>
   </div>
-  <div class="lab"><span>Lançamentos</span><button class="btn sm" onclick="abrir('receber')">+ Novo recebível</button></div><div class="card">`;
-  if(!D.receber.length) h+=`<div class="empty">Nenhum recebível ainda.</div>`;
-  D.receber.slice().sort((a,b)=>a.d.localeCompare(b.d)).forEach(r=>{
+  <div class="lab"><span>Lançamentos · ${D.config.mes}</span><button class="btn sm" onclick="abrir('receber')">+ Novo recebível</button></div><div class="card">`;
+  const Lr=D.receber.filter(inCur);
+  if(!Lr.length) h+=`<div class="empty">Nenhum recebível em ${D.config.mes}.</div>`;
+  Lr.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).forEach(r=>{
     h+=`<div class="tr"><div class="dt">${r.d}</div>
      <div class="nm" onclick="abrir('receber','${r.id}')"><div class="t1">${r.n}</div><div class="t2">${r.t} · ${r.f}</div></div>
      <div style="text-align:right;flex:0 0 auto;"><div class="vl">${BRL(r.v)}</div>
@@ -628,22 +647,71 @@ function tsFmt(ts){
   const d=new Date(ts);
   return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
-function fecharMes(){
-  if(!D.hist) D.hist=[];
+function snapAtual(){
   const c=calc();
-  const snap={
-    id:uid(), mes:D.config.mes, ano:new Date().getFullYear(), ts:Date.now(),
+  const cur=D.config.compAtual;
+  const P=D.pagar.filter(inCur).map(p=>({n:p.n,f:p.f,v:+p.v,s:p.s?1:0,d:p.d||'',sub:p.sub?1:0}));
+  const R=D.receber.filter(inCur).map(r=>({n:r.n,t:r.t,v:+r.v,s:r.s,d:r.d||''}));
+  return {
+    id:uid(), comp:cur, mes:monthName(cur), ano:+cur.split("-")[0], ts:Date.now(),
     entradas:c.entradas, saidas:c.saidas, pago:c.pago, aberto:c.aberto,
     receb:c.receb, sobra:c.sobra, saldo:c.saldo,
-    nPagar:D.pagar.length, nReceber:D.receber.length,
-    metaTotal:D.metas.reduce((s,m)=>s+ +m.a,0)
+    nPagar:P.length, nReceber:R.length,
+    metaTotal:D.metas.reduce((s,m)=>s+ +m.a,0),
+    itens:{pagar:P, receber:R}
   };
-  // se já existe fechamento do mesmo mês/ano, substitui
-  const i=D.hist.findIndex(x=>x.mes===snap.mes && x.ano===snap.ano);
+}
+function fecharMes(){
+  if(!D.hist) D.hist=[];
+  const snap=snapAtual();
+  const i=D.hist.findIndex(x=>x.comp===snap.comp);
   if(i>=0) D.hist[i]=snap; else D.hist.unshift(snap);
   D.hist.sort((a,b)=>b.ts-a.ts);
   addLog("fechou",`Fechou ${snap.mes}/${snap.ano} · saldo ${BRL(snap.saldo)}`);
   save(); show('config'); toast("Mês salvo no histórico");
+}
+function fecharFatura(){
+  if(!D.hist) D.hist=[];
+  const cur=D.config.compAtual;
+  const nxt=nextComp(cur);
+  // 1) snapshot da fatura atual
+  const snap=snapAtual();
+  const i=D.hist.findIndex(x=>x.comp===cur);
+  if(i>=0) D.hist[i]=snap; else D.hist.unshift(snap);
+  D.hist.sort((a,b)=>b.ts-a.ts);
+  // 2) virar contas (estilo fatura de cartão)
+  const outros=D.pagar.filter(p=>(p.comp||cur)!==cur); // meses já existentes ficam
+  const doMes=D.pagar.filter(p=>(p.comp||cur)===cur);
+  const novos=[];
+  doMes.forEach(p=>{
+    if(p.sub){
+      // assinatura mensal reaparece no próximo mês; anual reaparece daqui a 12 meses
+      const alvo = p.ciclo==="anual" ? compMais(cur,12) : nxt;
+      novos.push({...p, id:uid(), comp:alvo, dt:shiftDt(p.dt,alvo,p.d), s:0});
+      // instância atual: arquivada no histórico (some do ativo)
+    } else if(p.inv){
+      // aporte reaparece no próximo mês em aberto
+      novos.push({...p, id:uid(), comp:nxt, dt:shiftDt(p.dt,nxt,p.d), s:0});
+    } else {
+      // conta avulsa: paga → arquiva; em aberto → vira pro próximo mês (saldo rotativo)
+      if(!p.s) novos.push({...p, comp:nxt, dt:shiftDt(p.dt,nxt,p.d)});
+    }
+  });
+  D.pagar=outros.concat(novos);
+  // recebíveis: recorrentes reaparecem; avulsos recebidos arquivam; a receber viram
+  const outrosR=D.receber.filter(r=>(r.comp||cur)!==cur);
+  const doMesR=D.receber.filter(r=>(r.comp||cur)===cur);
+  const novosR=[];
+  doMesR.forEach(r=>{
+    if(r.t==="Recorrente"){ novosR.push({...r, id:uid(), comp:nxt, dt:shiftDt(r.dt,nxt,r.d), s:0}); }
+    else { if(r.s!==2) novosR.push({...r, comp:nxt, dt:shiftDt(r.dt,nxt,r.d)}); }
+  });
+  D.receber=outrosR.concat(novosR);
+  // 3) avança o mês
+  D.config.compAtual=nxt;
+  D.config.mes=monthName(nxt);
+  addLog("fechou",`Fechou ${snap.mes} → abriu ${monthName(nxt)} · saldo ${BRL(snap.saldo)}`);
+  save(); show('painel'); toast(`Fatura de ${snap.mes} fechada`);
 }
 function verHist(id){
   const s=D.hist.find(x=>x.id===id); if(!s) return;
@@ -659,8 +727,18 @@ function verHist(id){
     ${linha("Saldo do mês",BRL(s.saldo),s.saldo>=0?"var(--green)":"var(--red)")}
     ${linha("Guardado em metas",BRL(s.metaTotal),"var(--gold)")}
     <div class="tot"><span class="l">${s.mes} · ${s.ano}</span><span class="v">${BRL(s.saldo)}</span></div>
-   </div>
-   <button class="btn del full" style="margin-top:12px;" onclick="delHist('${s.id}')">Excluir do histórico</button>
+   </div>`;
+  if(s.itens && s.itens.pagar && s.itens.pagar.length){
+    h+=`<div class="lab">Contas da fatura</div><div class="card">`;
+    s.itens.pagar.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).forEach(p=>{
+      h+=`<div class="tr"><div class="dt">${p.d}</div>
+       <div class="nm"><div class="t1">${p.n}</div><div class="t2">${p.f}${p.sub?' · assinatura':''}</div>
+        <div style="margin-top:5px;"><span class="st ${p.s?'ok':'no'}">${p.s?'PAGO':'ABERTO'}</span></div></div>
+       <div class="vl">${BRL(p.v)}</div></div>`;
+    });
+    h+=`<div class="tot"><span class="l">Total</span><span class="v">${BRL(s.saidas)}</span></div></div>`;
+  }
+  h+=`<button class="btn del full" style="margin-top:12px;" onclick="delHist('${s.id}')">Excluir do histórico</button>
    <button class="btn full" style="margin-top:8px;" onclick="closeSheet()">Fechar</button>`;
   $('sbody').innerHTML=`<h3>${s.mes} <em>${s.ano}</em></h3>${h}`;
   openSheet();
@@ -688,8 +766,8 @@ function config(){
    </div>
   </div>
   <div class="lab">Histórico de meses</div><div class="card">
-   <div class="tr"><div class="nm"><div class="t1">Fechar mês atual</div><div class="t2">salva um resumo de ${D.config.mes}</div></div></div>
-   <button class="btn g full" style="margin-top:4px;" onclick="fecharMes()">Fechar ${D.config.mes}</button>
+   <div class="tr"><div class="nm"><div class="t1">Finalizar ${D.config.mes}</div><div class="t2">fecha a fatura e vira as contas pro próximo mês</div></div></div>
+   <button class="btn g full" style="margin-top:4px;" onclick="fecharFatura()">Finalizar ${D.config.mes} →</button>
    ${(D.hist&&D.hist.length)?`<div style="margin-top:10px;">`+D.hist.map(s=>
      `<div class="tr" onclick="verHist('${s.id}')" style="cursor:pointer;">
        <div class="nm"><div class="t1">${s.mes} · ${s.ano}</div><div class="t2">${s.nPagar} contas · fechado ${tsFmt(s.ts)}</div></div>
@@ -931,31 +1009,32 @@ function closeSheet(){
 $('sheet').onclick=e=>{ if(e.target.id==='sheet') closeSheet(); };
 
 function verMes(idx){
-  const MES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-  const hoje=new Date();
-  const ano=hoje.getFullYear()+Math.floor((hoje.getMonth()+idx)/12);
-  const m=(hoje.getMonth()+idx)%12;
-  const nome=MES[m];
+  const targetComp=compMais(D.config.compAtual,idx);
+  const ano=+targetComp.split("-")[0];
+  const nome=monthName(targetComp);
   const atual=(idx===0);
 
-  // filtra pagar/receber daquele mês: usa dt quando existir; senão trata como recorrente mensal;
-  // anuais só entram no mês de cadastro (aprox: mês atual quando sem dt)
-  const noMes=(p,anoRef,mRef)=>{
-    if(p.dt){ const d=new Date(p.dt+"T00:00:00"); return d.getFullYear()===anoRef && d.getMonth()===mRef; }
-    if(p.sub && p.ciclo==="anual") return atual; // sem dt -> só no atual
-    return true; // recorrente mensal (ou conta padrão)
-  };
-  const pagar=D.pagar.filter(p=>noMes(p,ano,m)).slice().sort((a,b)=>(a.d||'').localeCompare(b.d||''));
-  const receber=D.receber.filter(p=>noMes(p,ano,m)).slice().sort((a,b)=>(a.d||'').localeCompare(b.d||''));
+  const real=D.pagar.filter(p=>(p.comp||D.config.compAtual)===targetComp);
+  const realR=D.receber.filter(r=>(r.comp||D.config.compAtual)===targetComp);
+  let pagar, receber, projetado=false;
+  if(real.length||realR.length){
+    pagar=real.slice(); receber=realR.slice();
+  } else {
+    // projeção: assinaturas mensais do mês atual reaparecem
+    projetado=true;
+    pagar=D.pagar.filter(p=>p.sub && p.ciclo!=="anual" && inCur(p)).map(p=>({...p,s:0}));
+    receber=D.receber.filter(r=>r.t==="Recorrente" && inCur(r)).map(r=>({...r,s:0}));
+  }
+  pagar=pagar.sort((a,b)=>(a.d||'').localeCompare(b.d||''));
+  receber=receber.sort((a,b)=>(a.d||'').localeCompare(b.d||''));
   const saidas=pagar.reduce((a,b)=>a+ +b.v,0);
   const entradas=receber.reduce((a,b)=>a+ +b.v,0);
   const pago=pagar.filter(p=>p.s).reduce((a,b)=>a+ +b.v,0);
   const aberto=saidas-pago;
   const sobra=entradas-saidas;
-  const taxa=entradas?Math.round(sobra/entradas*100):0;
   const pct=entradas?Math.max(0,Math.min(100,Math.round(saidas/entradas*100))):0;
 
-  let h=`<div class="sd">${atual?'Mês atual · resumo e contas previstas.':'Previsão do mês · com base em contas atuais + assinaturas.'}</div>
+  let h=`<div class="sd">${atual?'Mês atual · contas desta fatura.':(projetado?'Previsão · assinaturas que se repetem.':'Contas deste mês.')}</div>
    <div class="kpis" style="margin-top:8px;">
     <div class="kpi"><div class="k">Saídas totais</div><div class="v">${BRL(saidas)}</div><div class="s">${pagar.length} lançamentos</div></div>
     <div class="kpi"><div class="k">Já pago</div><div class="v g">${BRL(pago)}</div><div class="s">${pagar.filter(p=>p.s).length} contas</div></div>
@@ -966,16 +1045,17 @@ function verMes(idx){
     <div style="flex:${pct};background:var(--paper2);color:var(--gray);">${pct}% SAÍDAS</div>
     <div style="flex:${100-pct};background:var(--gold);color:var(--paper);">${100-pct}% SOBRA</div>
    </div>
-   <div class="lab">Contas previstas</div>
+   <div class="lab">${projetado?'Contas previstas':'Contas'}</div>
    <div class="card">`;
-  if(!pagar.length) h+=`<div class="empty">Sem contas previstas.</div>`;
+  if(!pagar.length) h+=`<div class="empty">Sem contas.</div>`;
   pagar.forEach(p=>{
-    h+=`<div class="tr" onclick="verConta('${p.id}',${idx})" style="cursor:pointer;">
+    const clic = (atual||!projetado);
+    h+=`<div class="tr" ${clic?`onclick="verConta('${p.id}',${idx})" style="cursor:pointer;"`:''}>
      <div class="nm"><div class="t1">${p.n}</div><div class="t2">${p.f}${p.sub?' · '+(p.ciclo||'mensal'):''} · dia ${p.d||'—'}</div>
-      <div style="margin-top:5px;"><button class="st ${p.s?'ok':'no'}" onclick="event.stopPropagation();togMes('${p.id}',${idx})">${p.s?'PAGO':'ABERTO'}</button></div></div>
+      ${clic?`<div style="margin-top:5px;"><button class="st ${p.s?'ok':'no'}" onclick="event.stopPropagation();togMes('${p.id}',${idx})">${p.s?'PAGO':'ABERTO'}</button></div>`:`<div style="margin-top:5px;"><span class="st no" style="opacity:.6">PREVISTA</span></div>`}</div>
      <div class="vl">${BRL(p.v)}</div></div>`;
   });
-  h+=`<div class="tot"><span class="l">Total do mês</span><span class="v">${BRL(saidas)}</span></div></div>`;
+  h+=`<div class="tot"><span class="l">Total de ${nome}</span><span class="v">${BRL(saidas)}</span></div></div>`;
   if(receber.length){
     h+=`<div class="lab">Recebíveis</div><div class="card">`;
     receber.forEach(p=>{
@@ -1003,18 +1083,21 @@ function salvar(tp,id){
     const v=parseMoney(g('i_v'));
     const isSub=g('i_f')==='Assinatura';
     const isInv=g('i_f')==='Investimento';
-    const dt=g('i_dt')||"";
-    const dia = dt ? dt.slice(8,10) : "01";
+    let dt=g('i_dt')||"";
     const nome=g('i_n');
     if(!nome){ toast("Informe a descrição"); return; }
     if(!(v>0)){ toast("Informe um valor válido"); return; }
     if(!dt){ toast("Selecione a data"); return; }
     if(isInv && !g('i_meta')){ toast("Escolha a meta do aporte"); return; }
+    // conta pertence à fatura atual: normaliza a data para o mês em aberto
+    const compNew = id ? (D[tp].find(x=>x.id===id)?.comp||D.config.compAtual) : D.config.compAtual;
+    const dia = dt.slice(8,10);
+    dt = compNew+"-"+dia;
     const o = tp==="pagar"
-      ? {d:dia,dt,n:nome,f:g('i_f'),v,
+      ? {d:dia,dt,comp:compNew,n:nome,f:g('i_f'),v,
          sub:isSub?1:0,ciclo:isSub?(g('i_ciclo')||"mensal"):"",
          inv:isInv?1:0,meta:isInv?g('i_meta'):""}
-      : {d:dia,dt,n:nome,t:g('i_t'),f:g('i_f'),v};
+      : {d:dia,dt,comp:compNew,n:nome,t:g('i_t'),f:g('i_f'),v};
     if(id){
       const prev=D[tp].find(x=>x.id===id);
       // se estava paga e era aporte, reverte o efeito anterior na meta
