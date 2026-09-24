@@ -1,4 +1,4 @@
-const CACHE = 'bp-financeiro-v17';
+const CACHE = 'bp-financeiro-v20';
 const ASSETS = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png',
                 './icon-maskable.png','./favicon.png'];
 
@@ -33,12 +33,13 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   if (new URL(req.url).pathname.startsWith('/api/')) return; // dados autenticados: nunca cachear
 
-  // navegação: serve sempre o index do cache
+  // navegação: rede primeiro (sempre a versão nova), cache só offline
   if (req.mode === 'navigate') {
     e.respondWith(
-      caches.match('./index.html')
-        .then(hit => hit || fetch('./index.html', {redirect:'follow'}).then(limpa))
-        .catch(() => fetch(req))
+      fetch('./index.html', {cache:'no-store', redirect:'follow'}).then(limpa).then(res => {
+        if (res && res.ok) { const c = res.clone(); caches.open(CACHE).then(x => x.put('./index.html', c)).catch(() => {}); }
+        return res;
+      }).catch(() => caches.match('./index.html'))
     );
     return;
   }
