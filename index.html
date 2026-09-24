@@ -138,7 +138,7 @@ transform:translateY(100%);transition:transform .42s cubic-bezier(.32,.72,0,1);
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));
 transform:translateX(-50%) translateY(14px) scale(.96);background:var(--ink);color:var(--paper);
 padding:12px 20px;border-radius:99px;font-family:'JetBrains Mono';font-size:11px;
-z-index:80;opacity:0;transition:transform .34s cubic-bezier(.32,.72,0,1),opacity .22s;pointer-events:none;white-space:nowrap;}
+z-index:80;opacity:0;transition:transform .34s cubic-bezier(.32,.72,0,1),opacity .22s;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis;}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}
 .empty{text-align:center;padding:34px 20px;color:var(--gray);font-size:13px;line-height:1.6;}
 /* Transições Apple-style */
@@ -390,6 +390,8 @@ async function load(){
   }));
   if(!D.hist) D.hist=[];
   delete D.log;
+  if(!D.apIds) D.apIds={};
+  D.pagar.forEach(p=>{ if(p.ext && !D.apIds[p.ext]) D.apIds[p.ext]=Date.now(); });
   aplicaModo();
   show("painel");
 }
@@ -400,8 +402,9 @@ async function save(){
   clearTimeout(sT);
   sT=setTimeout(()=>{ const sv=$('sv'); if(sv) sv.textContent = DB.modo==="memoria" ? "sem salvar" : "salvo"; },600);
 }
-function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on');
-  setTimeout(()=>e.classList.remove('on'),1700); }
+let __toastT;
+function toast(t,ms){ const e=$('toast'); e.textContent=t; e.classList.add('on');
+  clearTimeout(__toastT); __toastT=setTimeout(()=>e.classList.remove('on'),ms||1900); }
 
 /* ═══════ COMPETÊNCIA (mês da conta) ═══════ */
 const NOMES_MES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -1168,21 +1171,39 @@ function isoLocal(iso){
   const d=new Date(iso); const x=isNaN(d)?new Date():d;
   return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");
 }
-let __apBusy=false, __apLast=0;
+let __apBusy=false, __apLast=0, __apAviso=false;
+function apFetch(url,opt,ms){
+  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),ms||12000);
+  return fetch(url,{...opt,signal:ctl.signal,cache:"no-store"}).finally(()=>clearTimeout(t));
+}
 async function syncApplePay(manual){
+  if(manual){ const inp=$('ap_tok'); const v=inp?inp.value.trim():"";
+    if(v && v!==apToken()){ try{ localStorage.setItem(AP_KEY,v); }catch(e){} } }
   const tok=apToken();
-  if(!tok || !/^https?:$/.test(location.protocol) || __apBusy) return;
-  if(!manual && Date.now()-__apLast<30000) return;
+  if(!tok){ if(manual) toast("Cole o token e toque em Sincronizar",2600); return; }
+  if(!/^https?:$/.test(location.protocol)){ if(manual) toast("Abra pelo link do app",2600); return; }
+  if(__apBusy){ if(manual){ __apAviso=true; toast("Sincronizando…",15000); } return; }
+  if(!manual && Date.now()-__apLast<5000) return;
+  const avisar=()=>manual||__apAviso;
   __apBusy=true; __apLast=Date.now();
+  if(manual) toast("Sincronizando…",15000);
+  let msg="";
   try{
-    const r=await fetch("/api/compras",{headers:{Authorization:"Bearer "+tok},cache:"no-store"});
-    if(r.status===401){ if(manual) toast("Token inválido"); return; }
-    if(!r.ok){ if(manual) toast("Falha ao sincronizar"); return; }
-    const {items=[]}=await r.json();
-    let novas=0; const ids=[];
+    let r;
+    try{ r=await apFetch("/api/compras",{headers:{Authorization:"Bearer "+tok}}); }
+    catch(e){ msg = e.name==="AbortError" ? "Servidor não respondeu" : "Sem conexão"; return; }
+    if(r.status===401){ msg="Token inválido"; return; }
+    if(r.status===404){ msg="API não encontrada (404)"; return; }
+    if(!r.ok){ msg="Falha no servidor ("+r.status+")"; return; }
+    let items;
+    try{ items=((await r.json())||{}).items; }catch(e){ msg="Resposta inválida do servidor"; return; }
+    if(!Array.isArray(items)) items=[];
+    if(!D.apIds) D.apIds={};
+    let novas=0;
     items.forEach(c=>{
-      ids.push(c.id);
-      if(D.pagar.some(p=>p.ext===c.id)) return;
+      if(!c || typeof c.id!=="string") return;
+      if(D.apIds[c.id] || D.pagar.some(p=>p.ext===c.id)) return;
+      D.apIds[c.id]=Date.now();
       const v=Math.round((+c.valor||0)*100)/100; if(!(v>0)) return;
       const dLoc=isoLocal(c.data);
       let comp=compFromDt(dLoc); if(!comp||comp<D.config.compAtual) comp=D.config.compAtual;
@@ -1192,22 +1213,33 @@ async function syncApplePay(manual){
         cartao:String(c.cartao||"").slice(0,40),v,s:0,sub:0,ciclo:"",inv:0,meta:""});
       novas++;
     });
-    if(novas){ save(); show(view); }
-    if(ids.length){
-      await fetch("/api/compras",{method:"POST",headers:{Authorization:"Bearer "+tok,"Content-Type":"application/json"},
-        body:JSON.stringify({ids})}).catch(()=>{});
-    }
+    // registro enxuto: esquece ids com mais de 120 dias (o servidor apaga com 60)
+    const lim=Date.now()-120*864e5; Object.keys(D.apIds).forEach(k=>{ if(D.apIds[k]<lim) delete D.apIds[k]; });
     D.config.apSync=Date.now(); save();
-    if(novas) toast(`${novas} compra${novas>1?'s':''} do Apple Pay`);
-    else if(manual) toast("Nenhuma compra nova");
-  }catch(e){ if(manual) toast("Sem conexão"); }
-  finally{ __apBusy=false; }
+    if(novas){ show(view); msg=`${novas} compra${novas>1?'s':''} do Apple Pay importada${novas>1?'s':''}`; __apAviso=true; }
+    else { msg="Nenhuma compra nova"; if(view==='config') show('config'); }
+  }catch(e){ msg="Erro ao importar compras"; }
+  finally{
+    __apBusy=false;
+    if(msg && avisar()) toast(msg,2600);
+    __apAviso=false;
+  }
 }
-document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") syncApplePay(); });
+let __apRetry;
+function apAuto(){
+  if(document.visibilityState!=="visible") return;
+  syncApplePay();
+  clearTimeout(__apRetry);
+  __apRetry=setTimeout(()=>{ if(document.visibilityState==="visible"){ __apLast=0; syncApplePay(); } },8000);
+}
+document.addEventListener("visibilitychange",apAuto);
+window.addEventListener("pageshow",apAuto);
+window.addEventListener("focus",apAuto);
+window.addEventListener("online",apAuto);
 /* ═══════ BOOT (TESTE — sem autenticação) ═══════ */
 (async ()=>{
   await load();
-  syncApplePay();
+  apAuto();
 })();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{
   navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(()=>{});});}
