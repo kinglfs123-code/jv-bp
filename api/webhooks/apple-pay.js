@@ -16,8 +16,8 @@ module.exports = async (req, res) => {
   const t = Date.parse(b.data);
   const data = new Date(Number.isNaN(t) ? Date.now() : t).toISOString();
 
-  // id determinístico: o mesmo disparo repetido não duplica a compra
-  const id = crypto.createHash('sha256').update([valor, estabelecimento, cartao, data].join('|')).digest('hex').slice(0, 20);
+  // id determinístico por minuto: o mesmo disparo repetido não duplica a compra
+  const id = crypto.createHash('sha256').update([valor, estabelecimento.toLowerCase(), cartao.toLowerCase(), data.slice(0, 16)].join('|')).digest('hex').slice(0, 20);
   const compra = { id, valor, estabelecimento, cartao, data, recebido: new Date().toISOString() };
 
   try {
