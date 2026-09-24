@@ -1,4 +1,4 @@
-const CACHE = 'bp-financeiro-v16';
+const CACHE = 'bp-financeiro-v17';
 const ASSETS = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png',
                 './icon-maskable.png','./favicon.png'];
 
@@ -31,6 +31,7 @@ async function limpa(res){
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
+  if (new URL(req.url).pathname.startsWith('/api/')) return; // dados autenticados: nunca cachear
 
   // navegação: serve sempre o index do cache
   if (req.mode === 'navigate') {
