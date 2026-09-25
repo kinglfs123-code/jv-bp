@@ -330,6 +330,18 @@ background:var(--white);color:var(--ink);cursor:pointer;}
 .fo-bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;}
 .fo-bars span{width:100%;border-radius:6px 6px 3px 3px;background:var(--p4);min-height:3px;}
 .fo-bars small{font-family:'JetBrains Mono';font-size:8.5px;color:var(--gray);}
+/* acesso */
+.auth{position:fixed;inset:0;z-index:90;background:var(--paper);display:flex;align-items:center;justify-content:center;
+padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));overflow-y:auto;}
+.auth[hidden]{display:none;}
+.auth-box{width:100%;max-width:380px;}
+.auth-box h1{font-family:'Playfair Display';font-weight:400;font-size:34px;margin-bottom:6px;}
+.auth-box h1 em{font-style:italic;color:var(--gold);}
+.auth-sub{font-size:13px;color:var(--gray);margin-bottom:22px;}
+.auth-msg{min-height:18px;font-size:12px;color:var(--gray);margin-top:12px;text-align:center;}
+.auth-links{display:flex;justify-content:space-between;margin-top:14px;}
+.auth-links button{background:none;border:none;color:var(--gold);font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:8px 0;}
+body.sem-sessao .app, body.sem-sessao nav{display:none;}
 /* skeleton de carregamento */
 .sk{position:relative;overflow:hidden;background:var(--paper2);border-radius:12px;}
 .sk::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
@@ -345,6 +357,17 @@ html[data-t="dark"] .sk::after{background:linear-gradient(90deg,transparent,rgba
 </style>
 </head>
 <body>
+<div id="auth" class="auth" hidden>
+ <div class="auth-box">
+  <h1>BP <em>Financeiro</em></h1>
+  <div class="auth-sub" id="au_sub"></div>
+  <div class="f" id="au_fe"><label>E-mail</label><input id="au_e" type="email" autocomplete="email" inputmode="email" autocapitalize="none"></div>
+  <div class="f" id="au_fs"><label>Senha</label><input id="au_s" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')authEnviar()"></div>
+  <button class="btn g full" id="au_go" onclick="authEnviar()">Entrar</button>
+  <div class="auth-msg" id="au_msg" role="status"></div>
+  <div class="auth-links"><button id="au_alt" onclick="authAlt()">Criar conta</button><button id="au_esq" onclick="authModo('esqueci')">Esqueci a senha</button></div>
+ </div>
+</div>
 <div class="app">
 <header>
   <h1 id="ti">Painel <em>do mês</em></h1>
@@ -366,6 +389,7 @@ html[data-t="dark"] .sk::after{background:linear-gradient(90deg,transparent,rgba
 <div class="sheet" id="sheet"><div class="sb" id="sbody"></div></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script>
 const BRL=n=>"R$ "+(Number(n)||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const maskCPF=v=>String(v||"").replace(/\D/g,"").slice(0,11).replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2");
@@ -438,18 +462,21 @@ if(window.matchMedia){
 /* ═══════ PERSISTÊNCIA ═══════ */
 const KEY="bp-financeiro";
 const DB={
-  modo:"local", mem:null,
+  modo:"local", mem:null, key:KEY,
   init(){ try{ const t="__t"; localStorage.setItem(t,"1"); localStorage.removeItem(t); this.modo="local"; }catch(e){ this.modo="memoria"; } },
-  async ler(){ try{ if(this.modo==="local"){ const v=localStorage.getItem(KEY); return v?JSON.parse(v):null; } return this.mem; }catch(e){ return null; } },
-  async gravar(obj){ try{ if(this.modo==="local"){ localStorage.setItem(KEY,JSON.stringify(obj)); return true; } this.mem=obj; return true; }catch(e){ return false; } },
-  async limpar(){ try{ if(this.modo==="local") localStorage.removeItem(KEY); this.mem=null; }catch(e){} }
+  async ler(){ try{ if(this.modo==="local"){ const v=localStorage.getItem(this.key); return v?JSON.parse(v):null; } return this.mem; }catch(e){ return null; } },
+  async gravar(obj){ try{ if(this.modo==="local"){ localStorage.setItem(this.key,JSON.stringify(obj)); return true; } this.mem=obj; return true; }catch(e){ return false; } },
+  async limpar(){ try{ if(this.modo==="local"){ localStorage.removeItem(this.key); localStorage.removeItem(this.key+":sync"); } this.mem=null; }catch(e){} }
 };
 
+function novoEstado(base){ return Object.assign(JSON.parse(JSON.stringify(SEED)),base||{}); }
 async function load(){
   DB.init();
   const salvo=await DB.ler();
   if(salvo) D=Object.assign(D,salvo);
-  if(DB.modo==="memoria"){ const sv=$('sv'); if(sv) sv.textContent="sem salvar"; }
+  normaliza(); aplicaModo(); show("painel");
+}
+function normaliza(){
   // migração: garante competência em cada conta
   if(!D.config.compAtual) D.config.compAtual="2026-08";
   [D.pagar,D.receber].forEach(L=>L.forEach(x=>{
@@ -468,15 +495,10 @@ async function load(){
       D.pagar.forEach(p=>{ if(p.meta===m.id) p.meta=vistos[k].id; }); return false; } vistos[k]=m; return true; }); }
   if(!D.apIds) D.apIds={};
   D.pagar.forEach(p=>{ if(p.ext && !D.apIds[p.ext]) D.apIds[p.ext]=Date.now(); });
-  aplicaModo();
-  show("painel");
 }
-let sT;
 async function save(){
-  const ok=await DB.gravar(D);
-  const sv=$('sv'); if(sv) sv.textContent = ok ? "salvando…" : "erro ao salvar";
-  clearTimeout(sT);
-  sT=setTimeout(()=>{ const sv=$('sv'); if(sv) sv.textContent = DB.modo==="memoria" ? "sem salvar" : "salvo"; },600);
+  await DB.gravar(D);
+  if(sb && __user){ __pendente=true; salvarSync(); clearTimeout(__pushT); __pushT=setTimeout(pushNuvem,700); }
 }
 let __toastT;
 function toast(t,ms){ const e=$('toast'); e.textContent=t; e.classList.add('on');
@@ -884,15 +906,20 @@ function config(){
      `<button class="tseg ${modo===k?'on':''}" onclick="setTema('${k}');show('config')">${l}</button>`).join("")}
    </div>
   </div>
+  ${__user?`<div class="lab">Conta</div><div class="card">
+   <div class="tr"><div class="nm"><div class="t1">${__user.email}</div><div class="t2" id="nuvemst">${nuvemTxt()}</div></div></div>
+   <button class="btn full" style="margin-top:4px;" onclick="sairConta()">Sair</button>
+  </div>
   <div class="lab">Apple Pay</div><div class="card">
    <div class="tr"><div class="nm"><div class="t1">Compras automáticas</div>
-    <div class="t2">${apToken()?('conectado'+(D.config.apSync?' · sync '+tsFmt(D.config.apSync):'')):'cole o token do webhook'}</div></div></div>
-   <div class="f" style="margin:8px 0 0;"><label>Token</label><input id="ap_tok" type="password" autocomplete="off" value="${apToken().replace(/"/g,'&quot;')}"></div>
+    <div class="t2">${D.config.apConectado?('atalho conectado'+(D.config.apSync?' · sync '+tsFmt(D.config.apSync):'')):'cole ou gere o token do atalho'}</div></div></div>
+   <div class="f" style="margin:8px 0 0;"><label>Token do atalho</label><input id="ap_tok" type="text" autocomplete="off" spellcheck="false"></div>
    <div class="actions" style="margin-top:8px;">
+    <button class="btn full" onclick="apGerar()">Gerar novo</button>
     <button class="btn full" onclick="apSalvarToken()">Salvar token</button>
-    <button class="btn g full" onclick="syncApplePay(true)">Sincronizar</button>
    </div>
-  </div>
+   <button class="btn g full" style="margin-top:8px;" onclick="syncApplePay(true)">Sincronizar</button>
+  </div>`:''}
   <div class="lab">Backup</div><div class="card">
    <div class="tr"><div class="nm"><div class="t1">Seus dados</div><div class="t2" id="dbinfo">—</div></div></div>
    <div class="actions" style="margin-top:4px;">
@@ -1153,7 +1180,7 @@ function show(v){
     if(di){
       const n=D.pagar.length+D.receber.length+D.metas.length;
       const kb=(JSON.stringify(D).length/1024).toFixed(1).replace(".",",");
-      const md={local:"salvo neste navegador",host:"salvo no app",memoria:"não está salvando"}[DB.modo];
+      const md=__user?"sincronizado na nuvem":{local:"salvo neste navegador",host:"salvo no app",memoria:"não está salvando"}[DB.modo];
       di.textContent=`${n} registros · ${kb} KB · ${md}`;
     }
     if(!sheetOpen) window.scrollTo(0,0);
@@ -1439,30 +1466,32 @@ function salvar(tp,id){
   toast(cNew && cNew>D.config.compAtual ? `Lançada em ${monthName(cNew)}` : (id?"Atualizado":"Adicionado"));
 }
 
-/* ═══════ APPLE PAY (caixa de entrada do webhook) ═══════ */
-const AP_KEY="bp-ap-token";
-function apToken(){ try{ return localStorage.getItem(AP_KEY)||""; }catch(e){ return ""; } }
-function apSalvarToken(){
+/* ═══════ APPLE PAY (compras gravadas pelo webhook no Supabase) ═══════ */
+async function sha256hex(t){ const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function apGerar(){
+  const abc="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789", r=crypto.getRandomValues(new Uint8Array(32));
+  const t=[...r].map(x=>abc[x%abc.length]).join(""); const inp=$('ap_tok'); if(inp) inp.value=t;
+  try{ navigator.clipboard && navigator.clipboard.writeText(t); }catch(e){}
+  toast("Token copiado · toque em Salvar token",2600);
+}
+async function apSalvarToken(){
+  if(!sb||!__user) return toast("Entre na conta primeiro");
   const v=($('ap_tok').value||"").trim();
-  try{ v?localStorage.setItem(AP_KEY,v):localStorage.removeItem(AP_KEY); }catch(e){}
-  toast(v?"Token salvo":"Token removido");
-  if(v) syncApplePay(true);
+  if(v.length<16) return toast("O token precisa de 16+ caracteres",2600);
+  try{
+    const {error}=await sb.from("bp_tokens").upsert({user_id:__user.id,token_hash:await sha256hex(v)});
+    if(error) throw error;
+    D.config.apConectado=true; save(); show('config'); toast("Token conectado ao atalho");
+  }catch(e){ toast("Não foi possível salvar o token",2600); }
 }
 function isoLocal(iso){
   const d=new Date(iso); const x=isNaN(d)?new Date():d;
   return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");
 }
 let __apBusy=false, __apLast=0, __apAviso=false;
-function apFetch(url,opt,ms){
-  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),ms||12000);
-  return fetch(url,{...opt,signal:ctl.signal,cache:"no-store"}).finally(()=>clearTimeout(t));
-}
+function comPrazo(p,ms){ return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej({name:"AbortError"}),ms||12000))]); }
 async function syncApplePay(manual){
-  if(manual){ const inp=$('ap_tok'); const v=inp?inp.value.trim():"";
-    if(v && v!==apToken()){ try{ localStorage.setItem(AP_KEY,v); }catch(e){} } }
-  const tok=apToken();
-  if(!tok){ if(manual) toast("Cole o token e toque em Sincronizar",2600); return; }
-  if(!/^https?:$/.test(location.protocol)){ if(manual) toast("Abra pelo link do app",2600); return; }
+  if(!sb || !__user){ if(manual) toast("Entre na conta para sincronizar",2600); return; }
   if(__apBusy){ if(manual){ __apAviso=true; toast("Sincronizando…",15000); } return; }
   if(!manual && Date.now()-__apLast<5000) return;
   const avisar=()=>manual||__apAviso;
@@ -1470,15 +1499,13 @@ async function syncApplePay(manual){
   if(manual) toast("Sincronizando…",15000);
   let msg="";
   try{
+    const desde=new Date(Date.now()-60*864e5).toISOString();
     let r;
-    try{ r=await apFetch("/api/compras",{headers:{Authorization:"Bearer "+tok}}); }
-    catch(e){ msg = e.name==="AbortError" ? "Servidor não respondeu" : "Sem conexão"; return; }
-    if(r.status===401){ msg="Token inválido"; return; }
-    if(r.status===404){ msg="API não encontrada (404)"; return; }
-    if(!r.ok){ msg="Falha no servidor ("+r.status+")"; return; }
-    let items;
-    try{ items=((await r.json())||{}).items; }catch(e){ msg="Resposta inválida do servidor"; return; }
-    if(!Array.isArray(items)) items=[];
+    try{ r=await comPrazo(sb.from("bp_compras").select("id,valor,estabelecimento,cartao,data").gte("recebido",desde).order("data")); }
+    catch(e){ msg = e && e.name==="AbortError" ? "Servidor não respondeu" : "Sem conexão"; return; }
+    if(r.error){ msg = /jwt|auth/i.test(r.error.message||"") ? "Sessão expirada · entre de novo" : "Falha no servidor"; return; }
+    const items=Array.isArray(r.data)?r.data:[];
+    sb.from("bp_compras").delete().lt("recebido",desde).then(()=>{},()=>{});
     if(!D.apIds) D.apIds={};
     let novas=0;
     items.forEach(c=>{
@@ -1518,10 +1545,140 @@ document.addEventListener("visibilitychange",apAuto);
 window.addEventListener("pageshow",apAuto);
 window.addEventListener("focus",apAuto);
 window.addEventListener("online",apAuto);
-/* ═══════ BOOT (TESTE — sem autenticação) ═══════ */
+
+/* ═══════ NUVEM (Supabase: Auth + RLS) ═══════ */
+const CFG_KEY="bp-sb-cfg";
+let sb=null, __user=null, __rev=0, __pushT=null, __pushing=false, __pushFila=false, __pendente=false, __base=null, __canal=null, __nuvemSt="ok", __nuvemTs=0;
+async function cfgSupabase(){
+  let cfg=null;
+  try{ const r=await comPrazo(fetch("/api/config",{cache:"no-store"}),6000); if(r.ok){ cfg=await r.json(); localStorage.setItem(CFG_KEY,JSON.stringify(cfg)); } }catch(e){}
+  if(!cfg){ try{ cfg=JSON.parse(localStorage.getItem(CFG_KEY)||"null"); }catch(e){} }
+  return cfg && cfg.url && cfg.key ? cfg : null;
+}
+function temDados(o){ return !!o && ((o.pagar||[]).length+(o.receber||[]).length+(o.metas||[]).length)>0; }
+function idsDe(o){ const r={}; ["pagar","receber","metas"].forEach(k=>{ r[k]=new Set((o[k]||[]).map(x=>x.id)); }); return r; }
+function marcarBase(){ __base=idsDe(D); }
+function salvarSync(){ try{ localStorage.setItem(DB.key+":sync",JSON.stringify({rev:__rev,pend:__pendente})); }catch(e){} }
+function lerSync(){ try{ return JSON.parse(localStorage.getItem(DB.key+":sync")||"{}"); }catch(e){ return {}; } }
+function nuvemTxt(){ return {ok:"sincronizado"+(__nuvemTs?" · "+tsFmt(__nuvemTs):""),salvando:"salvando na nuvem…",offline:"sem internet · salva ao reconectar",erro:"falha ao sincronizar · tentando de novo"}[__nuvemSt]||""; }
+function statusNuvem(st){ __nuvemSt=st; if(st==="ok") __nuvemTs=Date.now(); const e=$('nuvemst'); if(e) e.textContent=nuvemTxt(); }
+async function lerNuvem(){ const {data,error}=await comPrazo(sb.from("bp_state").select("data,rev").eq("user_id",__user.id).maybeSingle(),10000); if(error) throw error; return data; }
+function aplicarNuvem(row){ D=novoEstado(row.data); __rev=row.rev; normaliza(); marcarBase(); DB.gravar(D); salvarSync(); show(view||"painel"); }
+
+async function cloudBoot(){
+  DB.init();
+  const cfg=/^https?:$/.test(location.protocol) && window.supabase ? await cfgSupabase() : null;
+  if(!cfg){ await load(); return; }                       // sem Supabase configurado: modo local
+  sb=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  sb.auth.onAuthStateChange((ev,ses)=>{ if(ev==="PASSWORD_RECOVERY") authModo("nova"); if(ev==="SIGNED_OUT" && __user) sairLocal(); });
+  const {data:{session}}=await sb.auth.getSession();
+  if(session && session.user) await entrar(session.user); else authModo("entrar");
+}
+async function entrar(user){
+  __user=user; DB.key="bp-financeiro:"+user.id;
+  document.body.classList.remove("sem-sessao"); $('auth').hidden=true;
+  const cache=await DB.ler(), sync=lerSync();
+  let legado=null; try{ const v=localStorage.getItem(KEY); legado=v?JSON.parse(v):null; }catch(e){}
+  let srv=null, offline=false;
+  try{ srv=await lerNuvem(); }catch(e){ offline=true; }
+  if(offline){ D=novoEstado(cache||legado||{pagar:[],receber:[],metas:[],hist:[]}); __rev=sync.rev||0; __pendente=!!sync.pend||!cache; statusNuvem("offline"); }
+  else if(srv){
+    if(cache && sync.pend && (sync.rev||0)===srv.rev){ D=novoEstado(cache); __rev=srv.rev; __pendente=true; }   // mudanças offline ainda não enviadas
+    else { D=novoEstado(srv.data); __rev=srv.rev; __pendente=false;
+      if(!cache && temDados(legado) && JSON.stringify(legado)!==JSON.stringify(srv.data) &&
+         confirm("Este aparelho tem dados de antes do login.\n\nOK = usar os dados deste aparelho\nCancelar = usar os dados da nuvem")){ D=novoEstado(legado); __pendente=true; } }
+  } else { D=novoEstado(cache||legado||{pagar:[],receber:[],metas:[],hist:[]}); __rev=0; __pendente=true; }
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  normaliza(); marcarBase(); aplicaModo(); await DB.gravar(D); salvarSync(); show("painel");
+  if(__pendente) pushNuvem(); else statusNuvem("ok");
+  ouvirNuvem(); apAuto();
+}
+async function pushNuvem(){
+  if(!sb||!__user) return;
+  if(__pushing){ __pushFila=true; return; }
+  if(!navigator.onLine){ statusNuvem("offline"); return; }
+  __pushing=true; statusNuvem("salvando");
+  try{
+    const {data,error}=await comPrazo(sb.rpc("bp_save",{p_data:D,p_rev:__rev}),12000);
+    if(error) throw error;
+    if(data==null) await resolverConflito();
+    else { __rev=data; __pendente=false; marcarBase(); statusNuvem("ok"); }
+  }catch(e){ statusNuvem(navigator.onLine?"erro":"offline"); clearTimeout(__pushT); __pushT=setTimeout(pushNuvem,15000); }
+  finally{ __pushing=false; salvarSync(); if(__pushFila){ __pushFila=false; pushNuvem(); } }
+}
+// outro aparelho salvou antes: parte da versão da nuvem e reaplica o que foi criado/apagado aqui
+async function resolverConflito(){
+  const row=await lerNuvem(); if(!row) return;
+  const S=novoEstado(row.data), base=__base||idsDe({});
+  ["pagar","receber","metas"].forEach(k=>{
+    const aqui=new Set(D[k].map(x=>x.id));
+    D[k].forEach(x=>{ if(!base[k].has(x.id) && !S[k].some(y=>y.id===x.id)) S[k].push(x); });
+    S[k]=S[k].filter(y=>!(base[k].has(y.id) && !aqui.has(y.id)));
+  });
+  D=S; __rev=row.rev; normaliza(); await DB.gravar(D); show(view||"painel");
+  const {data}=await sb.rpc("bp_save",{p_data:D,p_rev:__rev});
+  if(data!=null){ __rev=data; __pendente=false; marcarBase(); statusNuvem("ok"); toast("Sincronizado com outro aparelho",2400); }
+}
+async function puxarNuvem(){
+  if(!sb||!__user||__pushing) return;
+  if(__pendente) return pushNuvem();
+  try{ const row=await lerNuvem(); if(row && row.rev>__rev) aplicarNuvem(row); statusNuvem("ok"); }catch(e){ statusNuvem(navigator.onLine?"erro":"offline"); }
+}
+function ouvirNuvem(){
+  if(__canal) sb.removeChannel(__canal);
+  __canal=sb.channel("bp-"+__user.id)
+    .on("postgres_changes",{event:"*",schema:"public",table:"bp_state",filter:"user_id=eq."+__user.id},p=>{ if(p.new && p.new.rev>__rev) puxarNuvem(); })
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"bp_compras",filter:"user_id=eq."+__user.id},()=>{ __apLast=0; syncApplePay(); })
+    .subscribe();
+}
+window.addEventListener("online",()=>{ if(__user) (__pendente?pushNuvem():puxarNuvem()); });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && __user) puxarNuvem(); });
+
+/* ── telas de acesso ── */
+let __authModo="entrar";
+function authModo(m){
+  __authModo=m; document.body.classList.add("sem-sessao"); $('auth').hidden=false;
+  const T={entrar:["Entre para sincronizar seus dados.","Entrar","Criar conta"],criar:["Crie sua conta com e-mail e senha.","Criar conta","Já tenho conta"],
+           esqueci:["Enviaremos um link para redefinir a senha.","Enviar link","Voltar"],nova:["Defina sua nova senha.","Salvar senha","Voltar"]}[m];
+  $('au_sub').textContent=T[0]; $('au_go').textContent=T[1]; $('au_alt').textContent=T[2];
+  $('au_fe').style.display=m==="nova"?"none":""; $('au_fs').style.display=m==="esqueci"?"none":"";
+  $('au_s').autocomplete=m==="entrar"?"current-password":"new-password";
+  $('au_esq').style.display=m==="entrar"?"":"none"; $('au_msg').textContent="";
+}
+function authAlt(){ authModo(__authModo==="entrar"?"criar":"entrar"); }
+function authErro(e){ const t=(e&&e.message)||"";
+  return /invalid login/i.test(t)?"E-mail ou senha incorretos":/not confirmed/i.test(t)?"Confirme seu e-mail pelo link enviado":
+    /already registered|already exists/i.test(t)?"Esse e-mail já tem conta · toque em Já tenho conta":/rate|too many/i.test(t)?"Muitas tentativas · aguarde um pouco":
+    /password/i.test(t)?"Senha fraca · use 8+ caracteres":/fetch|network/i.test(t)?"Sem conexão":"Não foi possível concluir"; }
+async function authEnviar(){
+  const email=$('au_e').value.trim().toLowerCase(), senha=$('au_s').value, msg=$('au_msg'), go=$('au_go');
+  if(__authModo!=="nova" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ msg.textContent="Informe um e-mail válido"; return; }
+  if(__authModo!=="esqueci" && senha.length<8){ msg.textContent="A senha precisa de 8+ caracteres"; return; }
+  go.disabled=true; msg.textContent="Aguarde…";
+  try{
+    if(__authModo==="entrar"){ const {data,error}=await sb.auth.signInWithPassword({email,password:senha}); if(error) throw error; $('au_s').value=""; await entrar(data.user); }
+    else if(__authModo==="criar"){ const {data,error}=await sb.auth.signUp({email,password:senha,options:{emailRedirectTo:location.origin}}); if(error) throw error;
+      if(data.session){ $('au_s').value=""; await entrar(data.user); } else { authModo("entrar"); $('au_e').value=email; $('au_msg').textContent="Enviamos um link para seu e-mail. Confirme e entre."; } }
+    else if(__authModo==="esqueci"){ const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin}); if(error) throw error; msg.textContent="Se o e-mail tiver conta, o link chega em instantes."; }
+    else { const {data,error}=await sb.auth.updateUser({password:senha}); if(error) throw error; $('au_s').value=""; toast("Senha atualizada"); await entrar(data.user); }
+  }catch(e){ msg.textContent=authErro(e); }
+  finally{ go.disabled=false; }
+}
+async function sairConta(){
+  if(!confirm("Sair desta conta neste aparelho?")) return;
+  clearTimeout(__pushT); if(__pendente) await pushNuvem();
+  await sb.auth.signOut(); sairLocal();
+}
+function sairLocal(){
+  try{ localStorage.removeItem(DB.key); localStorage.removeItem(DB.key+":sync"); }catch(e){}
+  if(__canal){ sb.removeChannel(__canal); __canal=null; }
+  __user=null; __rev=0; __pendente=false; DB.key=KEY;
+  D=novoEstado({pagar:[],receber:[],metas:[],hist:[]}); $('main').innerHTML=""; authModo("entrar");
+}
+/* ═══════ BOOT ═══════ */
 (async ()=>{
-  await load();
-  apAuto();
+  await cloudBoot();
+  if(!__user) apAuto();
 })();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{
   navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(()=>{});});}
