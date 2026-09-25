@@ -1,4 +1,4 @@
-const CACHE = 'bp-financeiro-v25';
+const CACHE = 'bp-financeiro-v26';
 const ASSETS = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png',
                 './icon-maskable.png','./favicon.png'];
 
