@@ -1,4 +1,4 @@
-const CACHE = 'bp-financeiro-v22';
+const CACHE = 'bp-financeiro-v23';
 const ASSETS = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png',
                 './icon-maskable.png','./favicon.png'];
 
@@ -31,7 +31,10 @@ async function limpa(res){
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  if (new URL(req.url).pathname.startsWith('/api/')) return; // dados autenticados: nunca cachear
+  const url = new URL(req.url);
+  if (url.pathname.startsWith('/api/')) return;                       // dados autenticados: nunca cachear
+  const cdn = url.hostname === 'cdn.jsdelivr.net';
+  if (url.origin !== self.location.origin && !cdn) return;           // Supabase e outros: sempre rede
 
   // navegação: rede primeiro (sempre a versão nova), cache só offline
   if (req.mode === 'navigate') {
@@ -47,11 +50,11 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(req).then(hit => hit || fetch(req).then(async res => {
       const ok = await limpa(res);
-      if (ok && ok.status === 200 && ok.type === 'basic') {
+      if (ok && ok.status === 200 && (ok.type === 'basic' || cdn)) {
         const copy = ok.clone();
         caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
       }
       return ok;
-    }).catch(() => caches.match('./index.html')))
+    }).catch(() => cdn ? Response.error() : caches.match('./index.html')))
   );
 });
