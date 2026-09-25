@@ -342,6 +342,9 @@ padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-ins
 .auth-links{display:flex;justify-content:space-between;margin-top:14px;}
 .auth-links button{background:none;border:none;color:var(--gold);font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:8px 0;}
 body.sem-sessao .app, body.sem-sessao nav{display:none;}
+.st-fixo{cursor:default;pointer-events:none;}
+.subcard.fixo{cursor:default;}
+.subcard.fixo:active{transform:none;}
 /* skeleton de carregamento */
 .sk{position:relative;overflow:hidden;background:var(--paper2);border-radius:12px;}
 .sk::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
@@ -579,8 +582,7 @@ function painel(){
    <div class="kpis">
    <div class="kpi"><div class="k">Entradas</div><div class="v">${BRL(c.entradas)}</div><div class="s">${D.receber.filter(inCur).length} lançamentos</div></div>
    <div class="kpi"><div class="k">Saídas</div><div class="v">${BRL(c.saidas)}</div><div class="s">${D.pagar.filter(inCur).length} lançamentos</div></div>
-   <div class="kpi"><div class="k">Sobra</div><div class="v ${c.sobra>=0?'g':'rd'}">${BRL(c.sobra)}</div><div class="s">${c.sobra>=0?'vai para investimento':'atenção: negativo'}</div></div>
-   <div class="kpi"><div class="k">Taxa de poupança</div><div class="v ${c.taxa>=30?'gr':'rd'}">${c.taxa}%</div><div class="s">meta: acima de 30%</div></div>
+   <div class="kpi" style="grid-column:1/-1"><div class="k">Sobra</div><div class="v ${c.sobra>=0?'g':'rd'}">${BRL(c.sobra)}</div><div class="s">${c.sobra>=0?'vai para investimento':'atenção: negativo'}</div></div>
   </div>
   <div class="fatura">
    <div class="fatx"><div class="fk2">FATURA DE ${(D.config.mes||'').toUpperCase()}</div>
@@ -662,7 +664,7 @@ function pagar(){
     h+=`<div class="tr"><div class="dt">${p.d}</div>
      <div class="nm" onclick="verConta('${p.id}')"><div class="t1">${p.n}</div><div class="t2">${p.f}${p.cartao?' · '+p.cartao:''}${p.ap?' ·  Pay':''}${p.sub?' · '+(p.ciclo||'mensal'):''}</div></div>
      <div style="text-align:right;flex:0 0 auto;"><div class="vl">${BRL(p.v)}</div>
-      <div style="margin-top:5px;">${pill(p)}</div></div></div>`;
+      <div style="margin-top:5px;">${selo(p)}</div></div></div>`;
   });
   return h+`<div class="tot"><span class="l">Total de ${D.config.mes}</span><span class="v">${BRL(c.saidas)}</span></div></div>`;
 }
@@ -699,14 +701,14 @@ function assinaturas(){
 
   lista.forEach((s,i)=>{
     const col=COR[D.pagar.filter(p=>p.sub).findIndex(p=>p.id===s.id)%COR.length];
-    h+=`<div class="subcard" style="background:${col}" onclick="verConta('${s.id}')">
+    h+=`<div class="subcard fixo" style="background:${col}">
       <div class="ico">${(s.n[0]||'?').toUpperCase()}</div>
       <div class="info">
         <div class="t1">${s.n}</div>
         <div class="t2">${BRL(s.v)} · ${s.ciclo||'mensal'}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto;">
-       <div class="cobra">dia ${s.d}</div>${pill(s)}</div>
+       <div class="cobra">dia ${s.d}</div>${selo(s)}</div>
     </div>`;
   });
 
@@ -1239,7 +1241,7 @@ function tog(tp,id){
 
 /* ═══════ PAGAMENTO PADRONIZADO ═══════ */
 let __ctx=null;
-function pill(p){ return `<button class="st ${p.s?'ok':'no'}" onclick="event.stopPropagation();pg('${p.id}')">${p.s?'PAGO':'ABERTO'}</button>`; }
+function selo(p){ return `<span class="st st-fixo ${p.s?'ok':'no'}">${p.s?'PAGO':'ABERTO'}</span>`; }
 function pg(id){
   const it=D.pagar.find(x=>x.id===id); if(!it) return;
   tog('pagar',id);
@@ -1325,6 +1327,12 @@ function abrir(tp,id){
   $('sbody').innerHTML=`<h3>${titulo}</h3><div class="sd">${sub}</div>${h}`;
   openSheet();
 }
+function pagarConta(id,idx){
+  const p=D.pagar.find(x=>x.id===id); if(!p) return;
+  if(p.s){ pg(id); return; }                    // reabrir: continua no pop-up
+  __ctx=null; pg(id);
+  if(idx!=null) verMes(idx); else closeSheet();  // pagou: fecha o pop-up da conta
+}
 function verConta(id,idx){
   const p=D.pagar.find(x=>x.id===id); if(!p) return;
   const paga=!!p.s;
@@ -1341,7 +1349,7 @@ function verConta(id,idx){
     <div class="tr"><div class="nm"><div class="t1">Situação</div><div class="t2">${paga?'já quitada':'em aberto'}</div></div>
      <div class="vl" style="color:${paga?'var(--green)':'var(--red)'}">${paga?'PAGA':'ABERTA'}</div></div>
    </div>
-   <button class="btn ${paga?'':'g'} full" style="margin-top:12px;" onclick="pg('${p.id}')">${paga?'Marcar como aberta':'Marcar como paga'}</button>
+   <button class="btn ${paga?'':'g'} full" style="margin-top:12px;" onclick="pagarConta('${p.id}',${idx!=null?idx:'null'})">${paga?'Marcar como aberta':'Marcar como paga'}</button>
    <div class="actions" style="margin-top:8px;">
     <button class="btn full" onclick="abrir('pagar','${p.id}')">Editar</button>
     <button class="btn full" onclick="${idx!=null?`verMes(${idx})`:'closeSheet()'}">${idx!=null?'Voltar ao mês':'Fechar'}</button>
@@ -1395,7 +1403,7 @@ function verMes(idx){
     const clic = !p.prev;
     h+=`<div class="tr" ${clic?`onclick="verConta('${p.id}',${idx})" style="cursor:pointer;"`:''}>
      <div class="nm"><div class="t1">${p.n}</div><div class="t2">${p.f}${p.sub?' · '+(p.ciclo||'mensal'):''} · dia ${p.d||'—'}</div>
-      ${clic?`<div style="margin-top:5px;">${pill(p)}</div>`:`<div style="margin-top:5px;"><span class="st pv">PREVISTA</span></div>`}</div>
+      ${clic?`<div style="margin-top:5px;">${selo(p)}</div>`:`<div style="margin-top:5px;"><span class="st pv">PREVISTA</span></div>`}</div>
      <div class="vl">${BRL(p.v)}</div></div>`;
   });
   h+=`<div class="tot"><span class="l">Total de ${nome}</span><span class="v">${BRL(saidas)}</span></div></div>`;
