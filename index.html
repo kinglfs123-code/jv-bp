@@ -1706,6 +1706,183 @@ function sairLocal(){
   __user=null; __rev=0; __pendente=false; DB.key=KEY;
   D=novoEstado({pagar:[],receber:[],metas:[],hist:[]}); $('main').innerHTML=""; authModo("entrar");
 }
+/* ═══════ IDIOMA (segue o celular: português ou inglês) ═══════ */
+const LANG=/^pt/i.test((navigator.languages&&navigator.languages[0])||navigator.language||"pt")?"pt":"en";
+document.documentElement.lang=LANG==="pt"?"pt-BR":"en";
+const MESES_EN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MESES_PT=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const ABR_PT=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"], ABR_EN=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+const EN={
+ // títulos (cada parte do título é traduzida separada)
+ "Painel":"Monthly","do mês":"overview","Contas":"Bills","a pagar":"to pay","Valores":"Money","a receber":"to receive","Minhas":"My","assinaturas":"subscriptions",
+ "Family":"Family","Office":"Office","Metas e":"Goals &","reserva":"reserve","Config":"App","do app":"settings","Financeiro":"Finance",
+ "Rumo ao":"Road to","milhão":"a million","Nova":"New","Novo":"New","Editar":"Edit","conta":"bill","recebível":"receivable","meta":"goal","aporte":"contribution","Finalizar":"Close",
+ // abas
+ "Pagar":"Pay","Receber":"Receive","Assin.":"Subs","Investir":"Invest","Metas":"Goals",
+ // painel
+ "Bom dia":"Good morning","Boa tarde":"Good afternoon","Boa noite":"Good evening","Entradas":"Income","Saídas":"Expenses","Sobra":"Surplus",
+ "vai para investimento":"goes to investments","atenção: negativo":"warning: negative","Finalizar mês →":"Close month →","em aberto":"open",
+ "Faturas por mês":"Statements by month","Toque em um mês para ver as contas.":"Tap a month to see its bills.","Arraste para ver meses anteriores · toque para abrir.":"Swipe for previous months · tap to open.",
+ "Situação do mês":"This month","Contas já pagas":"Bills paid","Contas em aberto":"Open bills","vencem neste mês":"due this month","Já recebido":"Received",
+ "inclui parciais":"includes partials","A receber":"To receive","previsto até o fim do mês":"expected by month end","Receita recorrente":"Recurring income",
+ "Alocação da sobra":"Surplus allocation","Sem sobra neste mês.":"No surplus this month.","Todas as metas foram atingidas.":"All goals reached.",
+ // pagar / receber
+ "Já pago":"Paid","Em aberto":"Open","% da renda":"% of income","Lançamentos":"Entries","+ Nova conta":"+ New bill","Total":"Total","Total previsto":"Expected total",
+ "PAGO":"PAID","ABERTO":"OPEN","PAGA":"PAID","ABERTA":"OPEN","PREVISTA":"EXPECTED","RECEBIDO":"RECEIVED","PARCIAL":"PARTIAL","A RECEBER":"TO RECEIVE",
+ "Recebido":"Received","Pago":"Paid","+ Novo recebível":"+ New receivable","Recebíveis":"Receivables","Projeto":"Project","Recorrente":"Recurring",
+ "Toque em":"Tap","para começar.":"to get started.","Sem contas.":"No bills.",
+ "Boleto":"Bank slip","Cartão":"Card","Cartão de crédito":"Credit card","PIX":"PIX","Débito":"Debit","Débito automático":"Auto debit","Dinheiro":"Cash",
+ "Assinatura":"Subscription","Investimento":"Investment","mensal":"monthly","anual":"yearly","assinatura":"subscription","à vista":"upfront","50% entrada":"50% upfront","escrow":"escrow",
+ // assinaturas
+ "Todas":"All","Mensais":"Monthly","Anuais":"Yearly","PAGAS ESTE MÊS":"PAID THIS MONTH","GASTO EM ASSINATURAS":"SUBSCRIPTION SPENDING","/ mês em média":"/ month on average",
+ "MENSAIS":"MONTHLY","PRÓXIMA":"NEXT","Nenhuma assinatura ainda.":"No subscriptions yet.","Em":"In","escolha a forma":"choose the method","ao criar a conta.":"when creating the bill.",
+ // pop-ups
+ "Detalhes desta conta.":"Bill details.","Descrição":"Description","forma & recorrência":"method & recurrence","Valor":"Amount","total desta cobrança":"total of this charge",
+ "Vencimento":"Due date","data cadastrada":"saved date","Situação":"Status","já quitada":"paid off","Marcar como paga":"Mark as paid","Marcar como aberta":"Mark as open",
+ "Voltar ao mês":"Back to month","Fechar":"Close","Cancelar":"Cancel","Salvar":"Save","Excluir":"Delete","Voltar":"Back",
+ "Mês atual · contas desta fatura.":"Current month · bills in this statement.","Lançadas neste mês + recorrentes previstas.":"Added this month + expected recurring.",
+ "Contas lançadas neste mês.":"Bills added this month.","Saídas totais":"Total expenses","entradas − saídas":"income − expenses","FATURA ATUAL":"CURRENT STATEMENT","FECHADA":"CLOSED",
+ "Mês anterior":"Previous month","Próximo mês":"Next month","Contas da fatura":"Statement bills","Saldo do mês":"Month balance","Guardado em metas":"Saved in goals",
+ "Excluir do histórico":"Remove from history","Preencha e toque em salvar.":"Fill in and tap save.","Data de vencimento":"Due date","Forma de pagamento":"Payment method",
+ "Ciclo":"Cycle","Aportar para":"Contribute to","Projeto ou receita recorrente.":"Project or recurring income.","Data prevista":"Expected date","Origem":"Source","Condição":"Terms","Tipo":"Type",
+ "Quanto quer juntar e quanto já tem.":"How much you want to save and how much you have.","Nome da meta":"Goal name","Valor da meta":"Goal amount","Já guardado":"Saved so far",
+ "Pilar":"Pillar","Onde está investido":"Invested in","Emissor":"Issuer","Rentabilidade":"Return","Prazo de resgate":"Redemption","Rent. % a.a.":"Return % p.a.","Renda % a.a.":"Income % p.a.",
+ // family office
+ "Patrimônio total":"Total net worth","do milhão":"of the million","Renda passiva/mês":"Passive income/mo","estimada pela carteira":"estimated from portfolio","Aporte do mês":"This month's contribution",
+ "+ Novo aporte":"+ New contribution","Rumo ao milhão":"Road to a million","Alocação por pilar":"Allocation by pillar","Os 4 pilares":"The 4 pillars","4 PILARES":"4 PILLARS",
+ "Ver ativos ›":"See assets ›","Evolução · estimado × real":"Growth · estimated × actual","Real (meses fechados)":"Actual (closed months)","Estimado":"Estimated","Real":"Actual",
+ "Diferença":"Difference","a realizar":"pending","início":"start","hoje":"today","Reserva":"Reserve","Renda Fixa":"Fixed income","Renda Variável":"Equities","Formação":"Capital",
+ "Reserva de Emergência & Liquidez":"Emergency Fund & Liquidity","Renda Fixa & Crescimento Seguro":"Fixed Income & Safe Growth","Renda Variável & Multiplicação":"Equities & Multiplication","Formação de Capital":"Capital Building",
+ "Meta: 6 meses de custo":"Goal: 6 months of costs","Foco: ganho real":"Focus: real gains","Foco: proventos":"Focus: dividends","Métrica: aporte e poupança":"Metric: contributions & savings",
+ "Caixa e objetivos em formação":"Cash and goals in progress","FIIs":"REITs","Ações":"Stocks","ETFs globais":"Global ETFs",
+ "Cobertura do custo mensal":"Monthly cost coverage","Ganho real médio":"Average real gain","Proventos estimados":"Estimated dividends","Taxa de poupança":"Savings rate",
+ "No pilar":"In pillar","Renda/mês":"Income/mo","Ativos":"Assets","Nenhuma posição neste pilar.":"No positions in this pillar.","Toque em + Ativo ou mude o pilar de uma meta.":"Tap + Asset or change a goal's pillar.",
+ "+ Ativo":"+ Asset","+ Aporte":"+ Contribution","Aportes · últimos 6 meses":"Contributions · last 6 months","Média mensal":"Monthly average","Plano de aporte":"Contribution plan",
+ "Primeiro milhão em":"First million in","Aporte mensal ·":"Monthly contribution ·","Rentabilidade ·":"Return ·","Salvar como meu plano":"Save as my plan","Defina um aporte em Rumo ao milhão.":"Set a contribution in Road to a million.",
+ "agora":"now","—":"—",
+ // metas
+ "+ Nova meta":"+ New goal","META":"GOAL","Nenhuma meta ainda.":"No goals yet.",
+ // config
+ "Perfil":"Profile","Nome":"Name","CPF":"Tax ID (CPF)","Salvar perfil":"Save profile","Tema":"Theme","Aparência":"Appearance","Segue o tema do celular por padrão":"Follows your phone's theme by default",
+ "Automático":"Automatic","Claro":"Light","Escuro":"Dark","Conta":"Account","Sair":"Sign out","Apple Pay":"Apple Pay","Compras automáticas":"Automatic purchases",
+ "cole ou gere o token do atalho":"paste or generate the shortcut token","atalho conectado":"shortcut connected","Token do atalho":"Shortcut token","Gerar novo":"Generate new",
+ "Salvar token":"Save token","Sincronizar":"Sync","Backup":"Backup","Seus dados":"Your data","Exportar":"Export","Importar":"Import","Apagar tudo":"Delete everything",
+ "salvo neste navegador":"saved in this browser","salvo no app":"saved in the app","não está salvando":"not saving","sincronizado na nuvem":"synced to the cloud",
+ "sincronizado":"synced","salvando na nuvem…":"saving to the cloud…","sem internet":"offline","salva ao reconectar":"saves when reconnected","falha ao sincronizar":"sync failed","tentando de novo":"retrying",
+ // acesso
+ "Entre para sincronizar seus dados.":"Sign in to sync your data.","Crie sua conta com e-mail e senha.":"Create your account with email and password.",
+ "Enviaremos um link para redefinir a senha.":"We'll send a link to reset your password.","Defina sua nova senha.":"Set your new password.",
+ "Entrar":"Sign in","Criar conta":"Create account","Já tenho conta":"I have an account","Esqueci a senha":"Forgot password","Enviar link":"Send link","Salvar senha":"Save password",
+ "E-mail":"Email","Senha":"Password","Aguarde…":"Please wait…","Informe um e-mail válido":"Enter a valid email","A senha precisa de 8+ caracteres":"Password needs 8+ characters",
+ "Se o e-mail tiver conta, o link chega em instantes.":"If the email has an account, the link will arrive shortly.","Enviamos um link para seu e-mail. Confirme e entre.":"We sent a link to your email. Confirm it and sign in.",
+ "E-mail ou senha incorretos":"Wrong email or password","Confirme seu e-mail pelo link enviado":"Confirm your email with the link we sent","Esse e-mail já tem conta · toque em Já tenho conta":"This email already has an account · tap I have an account",
+ "Muitas tentativas · aguarde um pouco":"Too many attempts · wait a moment","Senha fraca · use 8+ caracteres":"Weak password · use 8+ characters","Sem conexão":"No connection","Não foi possível concluir":"Couldn't complete",
+ // avisos
+ "Adicionado":"Added","Atualizado":"Updated","Removido":"Removed","Removido do histórico":"Removed from history","Perfil salvo":"Profile saved","Plano atualizado":"Plan updated",
+ "Arquivo baixado":"File downloaded","Arquivo inválido":"Invalid file","Copiado":"Copied","Falhou":"Failed","Dados importados":"Data imported","Tudo apagado":"Everything deleted",
+ "Informe a descrição":"Enter a description","Informe um valor válido":"Enter a valid amount","Selecione a data":"Select the date","Escolha a meta do aporte":"Choose the contribution's goal",
+ "Informe o nome da meta":"Enter the goal name","Já existe uma meta com esse nome":"A goal with this name already exists","Senha atualizada":"Password updated",
+ "Sincronizado com outro aparelho":"Synced with another device","Sincronizando…":"Syncing…","Entre na conta para sincronizar":"Sign in to sync","Entre na conta primeiro":"Sign in first",
+ "Não foi possível salvar o token":"Couldn't save the token","O token precisa de 16+ caracteres":"The token needs 16+ characters","Token conectado ao atalho":"Token connected to the shortcut",
+ "Token copiado · toque em Salvar token":"Token copied · tap Save token","Nenhuma compra nova":"No new purchases","Erro ao importar compras":"Error importing purchases",
+ "Servidor não respondeu":"Server didn't respond","Sessão expirada · entre de novo":"Session expired · sign in again","Falha no servidor":"Server error",
+ "Apagar todos os lançamentos e metas?\nEssa ação não tem volta.":"Delete all entries and goals?\nThis can't be undone.",
+ "Este aparelho tem dados de antes do login.\n\nOK = usar os dados deste aparelho\nCancelar = usar os dados da nuvem":"This device has data from before sign-in.\n\nOK = use this device's data\nCancel = use the cloud data",
+ "Sair desta conta neste aparelho?":"Sign out of this account on this device?"
+};
+const NAV_EN={"Painel":"Overview","Pagar":"Pay","Receber":"Receive","Assin.":"Subs","Investir":"Invest","Metas":"Goals","Config":"Settings"};
+const mesEN=m=>{ const i=MESES_PT.findIndex(x=>x.toLowerCase()===String(m).toLowerCase()); return i<0?m:MESES_EN[i]; };
+const M="(Janeiro|Fevereiro|Março|Abril|Maio|Junho|Julho|Agosto|Setembro|Outubro|Novembro|Dezembro)";
+const plural=(n,a,b)=>(+String(n).replace(",",".")===1?a:b);
+const REGRAS=[
+ [new RegExp("^"+M+"$","i"),(_,m)=>mesEN(m)],
+ [/^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)(\s*✓)?$/i,(_,a,c)=>{ const i=ABR_PT.indexOf(a.toLowerCase()); const e=ABR_EN[i]; return (a===a.toUpperCase()?e.toUpperCase():a[0]===a[0].toUpperCase()?e[0].toUpperCase()+e.slice(1):e)+(c||""); }],
+ [/^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\/(\d{4})$/i,(_,a,y)=>ABR_EN[ABR_PT.indexOf(a.toLowerCase())]+"/"+y],
+ [/^(\d{2}) (janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)$/i,(_,d,m)=>d+" "+mesEN(m).toLowerCase()],
+ [new RegExp("^FATURA DE "+M+"$","i"),(_,m)=>mesEN(m).toUpperCase()+" STATEMENT"],
+ [new RegExp("^Fatura de "+M+" fechada$","i"),(_,m)=>mesEN(m)+" statement closed"],
+ [new RegExp("^Total de "+M+"$","i"),(_,m)=>mesEN(m)+" total"],
+ [new RegExp("^Finalizar "+M+"( →)?$","i"),(_,m,s)=>"Close "+mesEN(m)+(s||"")],
+ [new RegExp("^Aqui está o resumo do seu "+M+"\\.$","i"),(_,m)=>"Here's your "+mesEN(m)+" summary."],
+ [new RegExp("^Nenhuma conta em "+M+"\\.$","i"),(_,m)=>"No bills in "+mesEN(m)+"."],
+ [new RegExp("^Nenhum recebível em "+M+"\\.$","i"),(_,m)=>"No receivables in "+mesEN(m)+"."],
+ [new RegExp("^Nenhuma fatura registrada em "+M+"\\.$","i"),(_,m)=>"No statement recorded in "+mesEN(m)+"."],
+ [new RegExp("^Lançada em "+M+"$","i"),(_,m)=>"Added to "+mesEN(m)],
+ [new RegExp("^Essa conta já existe em "+M+"$","i"),(_,m)=>"This bill already exists in "+mesEN(m)],
+ [new RegExp("^(.+) já existe em "+M+"$","i"),(_,n,m)=>n+" already exists in "+mesEN(m)],
+ [new RegExp("^Soma ao patrimônio e ao aporte de "+M+"\\.$","i"),(_,m)=>"Adds to net worth and to "+mesEN(m)+"'s contribution."],
+ [/^Nenhuma assinatura (mensal|anual)\.$/,(_,t)=>"No "+(t==="mensal"?"monthly":"yearly")+" subscriptions."],
+ [/^(\d+) lançamentos?$/,(_,n)=>n+plural(n," entry"," entries")],
+ [/^(\d+) contas?$/,(_,n)=>n+plural(n," bill"," bills")],
+ [/^(\d+) registros?$/,(_,n)=>n+plural(n," record"," records")],
+ [/^(\d+) assinaturas?$/,(_,n)=>n+plural(n," subscription"," subscriptions")],
+ [/^(\d+) anua(?:l|is)$/,(_,n)=>n+" yearly"],
+ [/^(\d+) de (\d+)$/,(_,a,b)=>a+" of "+b],
+ [/^dia (\d+)$/,(_,d)=>"day "+d],
+ [/^cobre (\d+)% das saídas$/,(_,n)=>"covers "+n+"% of expenses"],
+ [/^([\d.,]+)% da carteira$/,(_,n)=>n+"% of portfolio"],
+ [/^([\d.,]+)% do pilar$/,(_,n)=>n+"% of pillar"],
+ [/^meta (\d+)%$/,(_,n)=>"goal "+n+"%"],
+ [/^(\d+) posições no pilar$/,(_,n)=>n+" positions in pillar"],
+ [/^([\d.,]+) de 6 meses$/,(_,n)=>n+" of 6 months"],
+ [/^Pilar (\d)$/,(_,n)=>"Pillar "+n],[/^PILAR (\d)$/,(_,n)=>"PILLAR "+n],
+ [/^faltam (.+)$/,(_,v)=>v+" to go"],
+ [/^(R\$ [\d.,]+) para (R\$ [\d.,]+)\/mês de saídas$/,(_,a,b)=>a+" for "+b+"/mo of expenses"],
+ [/^(R\$ [\d.,]+) ao ano$/,(_,v)=>v+" per year"],
+ [/^(R\$ [\d.,]+)\/mês$/,(_,v)=>v+"/mo"],
+ [/^(R\$ [\d.,]+) de (R\$ [\d.,]+) de renda ativa$/,(_,a,b)=>a+" of "+b+" active income"],
+ [/^aporte do mês (R\$ [\d.,]+)$/,(_,v)=>"this month's contribution "+v],
+ [/^plano (R\$ [\d.,]+)$/,(_,v)=>"plan "+v],
+ [/^rent\. média ([\d.,]+%) a\.a\.$/,(_,v)=>"avg. return "+v+" p.a."],
+ [/^rentabilidade média ([\d.,]+%) − IPCA ([\d.,]+%)$/,(_,a,b)=>"average return "+a+" − IPCA "+b],
+ [/^([+−-]?[\d.,]+%) a\.a\.$/,(_,v)=>v+" p.a."],
+ [/^([\d.,]+%) a\.m\.$/,(_,v)=>v+" p.m."],
+ [/^resgate (.+)$/,(_,v)=>"redemption "+String(v).replace(/^Vence /,"matures ")],
+ [/^([\d.,]+%) vindo de juros$/,(_,v)=>v+" from interest"],
+ [/^Em (\d+) meses$/,(_,n)=>"In "+n+" months"],
+ [/^(\d+) meses$/,(_,n)=>n+" months"],
+ [/^(\d+) meses de aporte$/,(_,n)=>n+" months of contributions"],
+ [/^(\d+) meses de custo fixo$/,(_,n)=>n+" months of fixed costs"],
+ [/^(\d+) anos?(?: e (\d+) m(?:ês|eses))?$/,(_,a,m)=>a+plural(a," year"," years")+(m?" and "+m+plural(m," month"," months"):"")],
+ [/^(\d+) m(?:ês|eses)$/,(_,m)=>m+plural(m," month"," months")],
+ [/^No plano atual, o primeiro milhão chega em (.+) \((.+)\)\.$/,(_,t,d)=>"On the current plan, your first million arrives in "+tr(t)+" ("+tr(d)+")."],
+ [/^Partindo de (R\$ [\d.,]+) hoje\.$/,(_,v)=>"Starting from "+v+" today."],
+ [/^Resumo fechado em (.+)\.$/,(_,d)=>"Summary closed on "+d+"."],
+ [/^sync (.+)$/,(_,d)=>"sync "+d],
+ [/^Há (\d+) aportes? em aberto para esta meta$/,(_,n)=>"There "+plural(n,"is ","are ")+n+plural(n," open contribution"," open contributions")+" for this goal"],
+ [/^Aportado em (.+)$/,(_,n)=>"Contributed to "+n],
+ [/^(.+) paga$/,(_,n)=>n+" paid"],[/^(.+) reaberta$/,(_,n)=>n+" reopened"],
+ [/^(\d+) compras? do Apple Pay importadas?$/,(_,n)=>n+" Apple Pay "+plural(n,"purchase","purchases")+" imported"],
+ [/^Falha no servidor \((\d+)\)$/,(_,c)=>"Server error ("+c+")"],
+ [/^Pilar (\d) · (.+)$/,(_,n,r)=>"Pillar "+n+" · "+tr(r)]
+];
+function trParte(t){ if(Object.prototype.hasOwnProperty.call(EN,t)) return EN[t];
+  for(const [re,f] of REGRAS){ const m=t.match(re); if(m) return f(...m); } return null; }
+function tr(t){
+  if(LANG==="pt"||t==null) return t;
+  const s=String(t), core=s.trim(); if(!core) return s;
+  const pre=s.slice(0,s.indexOf(core)), pos=s.slice(s.indexOf(core)+core.length);
+  let out=trParte(core);
+  if(out==null && core.includes(" · ")){ const partes=core.split(" · ").map(p=>{ const r=trParte(p); return r==null?p:r; }); const j=partes.join(" · "); if(j!==core) out=j; }
+  return out==null?s:pre+out+pos;
+}
+function traduzNo(n){
+  if(LANG==="pt"||!n) return;
+  if(n.nodeType===3){ const p=n.parentNode; if(!p||/^(SCRIPT|STYLE|TEXTAREA)$/.test(p.nodeName)) return;
+    const k=n.nodeValue.trim(), naBarra=p.closest&&p.closest("nav");
+    const v=naBarra&&NAV_EN[k]?n.nodeValue.replace(k,NAV_EN[k]):tr(n.nodeValue); if(v!==n.nodeValue) n.nodeValue=v; return; }
+  if(n.nodeType!==1||/^(SCRIPT|STYLE|TEXTAREA|INPUT)$/.test(n.nodeName)) return;
+  if(n.nodeName==="OPTION" && !n.hasAttribute("value")) n.setAttribute("value",n.textContent);  // valor interno continua em português
+  ["aria-label","title"].forEach(a=>{ if(n.hasAttribute&&n.hasAttribute(a)){ const v=tr(n.getAttribute(a)); if(v!==n.getAttribute(a)) n.setAttribute(a,v); } });
+  n.childNodes.forEach(traduzNo);
+}
+if(LANG!=="pt"){
+  const _confirm=window.confirm.bind(window); window.confirm=m=>_confirm(tr(m));
+  const obs=new MutationObserver(ms=>ms.forEach(m=>{ if(m.type==="characterData") traduzNo(m.target); else m.addedNodes.forEach(traduzNo); }));
+  const iniciar=()=>{ traduzNo(document.body); obs.observe(document.body,{childList:true,subtree:true,characterData:true}); };
+  if(document.body) iniciar(); else document.addEventListener("DOMContentLoaded",iniciar);
+}
+window.addEventListener("languagechange",()=>location.reload());
 /* ═══════ CONFIGURAÇÕES DO CELULAR (tamanho do texto, negrito) ═══════ */
 let __sonda=null;
 function lerSistema(){
