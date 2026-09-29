@@ -1,0 +1,27 @@
+# Segredos — NUNCA versionar
+.env
+.env.*
+*.local
+.vercel
+
+# Dependências e build
+node_modules/
+dist/
+build/
+.cache/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# Rascunhos e prévias (não fazem parte do deploy)
+*.png
+*.pdf
+*.zip
+*-preview*.html
+bp-aprovacao.html
+bp-family-office.html
+fatura-teste.html
+teste-negrito.html
+index-teste.html
