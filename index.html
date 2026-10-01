@@ -8,8 +8,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="favicon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="BP Financeiro">
-<title>BP Financeiro</title>
+<meta name="apple-mobile-web-app-title" content="Paggo">
+<title>Paggo</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 :root{--paper:#F5F2EA;--paper2:#EDE9DE;--white:#FBF9F4;--ink:#0F1922;--gold:#8F7318;
@@ -126,6 +126,7 @@ padding:22px 20px calc(24px + env(safe-area-inset-bottom));max-height:92vh;overf
 transform:translateY(100%);transition:transform .42s cubic-bezier(.32,.72,0,1);
 -webkit-overflow-scrolling:touch;}
 .sheet.on .sb{transform:translateY(0);}
+.sb .grab{width:38px;height:5px;border-radius:99px;background:var(--line);margin:-8px auto 14px;flex:0 0 auto;}
 .sb h3{font-family:'Playfair Display';font-size:calc(21px * var(--fs,1));margin-bottom:4px;}
 .sb h3 em{font-style:italic;color:var(--gold);}
 .sb .sd{font-size:calc(12px * var(--fs,1));color:var(--gray);margin-bottom:18px;}
@@ -327,6 +328,14 @@ background:var(--white);color:var(--ink);cursor:pointer;}
 .fo-bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;}
 .fo-bars span{width:100%;border-radius:6px 6px 3px 3px;background:var(--p4);min-height:3px;}
 .fo-bars small{font-family:'JetBrains Mono';font-size:calc(8.5px * var(--fs,1));color:var(--gray);}
+/* deslizar item (mobile) */
+.swipe{position:relative;overflow:hidden;}
+.swipe+.swipe{border-top:1px solid var(--line);}
+.swipe-bg{position:absolute;inset:0;display:flex;justify-content:flex-end;}
+.sw-act{border:none;color:#fff;font-family:'JetBrains Mono';font-size:calc(11px * var(--fs,1));font-weight:700;letter-spacing:.04em;width:84px;flex:0 0 auto;cursor:pointer;}
+.sw-act.pagar{background:var(--green);} .sw-act.reabrir{background:var(--gray);} .sw-act.editar{background:var(--navy);}
+.sw-front{position:relative;background:var(--white);transition:transform .28s cubic-bezier(.32,.72,0,1);touch-action:pan-y;will-change:transform;}
+.swipe .tr{border-bottom:none;}
 /* consultor IA */
 .ia-card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px;cursor:pointer;transition:transform .2s var(--ease-ios);}
 .ia-card:active{transform:scale(.985);}
@@ -459,7 +468,7 @@ html[data-t="dark"] .sk::after{background:linear-gradient(90deg,transparent,rgba
   <button data-v="config"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></span><span class="t">Config</span></button>
 </nav>
 
-<div class="sheet" id="sheet"><div class="sb" id="sbody"></div></div>
+<div class="sheet" id="sheet"><div class="sb" id="sb"><div class="grab" id="grab"></div><div id="sbody"></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
@@ -558,6 +567,9 @@ function normaliza(){
     if(x.comp<D.config.compAtual) x.comp=D.config.compAtual;
   }));
   if(!D.hist) D.hist=[];
+  if(!D.cats) D.cats={extra:[],ocultas:[]};
+  if(!D.cats.extra) D.cats.extra=[];
+  if(!D.cats.ocultas) D.cats.ocultas=[];
   delete D.log;
   D.config.mes=monthName(D.config.compAtual);
   D.metas.forEach(m=>{ if(!m.pilar){ const t=(m.n+' '+(m.d||'')).toLowerCase();
@@ -721,10 +733,11 @@ function pagar(){
   <div class="lab"><span>Lançamentos · ${D.config.mes}</span><button class="btn sm" onclick="abrir('pagar')">+ Nova conta</button></div><div class="card">`;
   if(!lista.length) h+=`<div class="empty">Nenhuma conta em ${D.config.mes}.<br>Toque em <b>+ Nova conta</b> para começar.</div>`;
   lista.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).forEach(p=>{
-    h+=`<div class="tr"><div class="dt">${p.d}</div>
+    h+=`<div class="swipe"><div class="swipe-bg"><button class="sw-act ${p.s?'reabrir':'pagar'}" onclick="pg('${p.id}')">${p.s?'Reabrir':'Pagar'}</button><button class="sw-act editar" onclick="abrir('pagar','${p.id}')">Editar</button></div>
+     <div class="tr sw-front" data-id="${p.id}"><div class="dt">${p.d}</div>
      <div class="nm" onclick="verConta('${p.id}')"><div class="t1">${esc(p.n)}</div><div class="t2">${p.cat?p.cat+' · ':''}${p.f}${p.cartao?' · '+p.cartao:''}${p.ap?' ·  Pay':''}${cicloTxt(p)}</div></div>
      <div style="text-align:right;flex:0 0 auto;"><div class="vl">${BRL(p.v)}</div>
-      <div style="margin-top:5px;">${selo(p)}</div></div></div>`;
+      <div style="margin-top:5px;">${selo(p)}</div></div></div></div>`;
   });
   return h+`<div class="tot"><span class="l">Total de ${D.config.mes}</span><span class="v">${BRL(c.saidas)}</span></div></div>`;
 }
@@ -813,11 +826,75 @@ function receber(){
 
 
 
+
+/* ═══════ CATEGORIAS (criar / editar / excluir) ═══════ */
+function catsTelaLista(){
+  return catList().map(c=>{ const base=CATS_BASE.some(x=>x.k===c.k), uso=D.pagar.filter(p=>(p.cat||catLocal(p))===c.k).length;
+    return `<div class="tr"><div style="width:14px;height:14px;border-radius:50%;background:${c.c};flex:0 0 auto"></div>
+     <div class="nm" onclick="catEditar(${JSON.stringify(c.k)})" style="cursor:pointer"><div class="t1">${esc(c.k)}</div>
+      <div class="t2">${base?'padrão':'personalizada'}${uso?` · ${uso} ${uso===1?'conta':'contas'}`:''}</div></div>
+     <button class="btn sm" onclick="event.stopPropagation();catEditar(${JSON.stringify(c.k)})">Editar</button></div>`;
+  }).join("");
+}
+function catsCard(){ const L=catList();
+  return `<div class="lab">Categorias</div>
+   <div class="card" onclick="catsAbrir()" style="cursor:pointer"><div class="tr" style="border:none">
+    <div class="nm"><div class="t1">Gerenciar categorias</div><div class="t2">${L.length} ${L.length===1?'categoria':'categorias'}</div>
+     <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">${L.slice(0,12).map(c=>`<i style="width:10px;height:10px;border-radius:50%;background:${c.c};display:inline-block"></i>`).join("")}</div></div>
+    <div class="vl" style="color:var(--gray)">›</div></div></div>`; }
+function catsAbrir(){
+  __ctx=null;
+  $('sbody').innerHTML=`<h3>Categorias</h3><div class="sd">Toque para editar. A cor é automática.</div>
+   <button class="btn g full" onclick="catEditar()">+ Nova categoria</button>
+   <div class="card" id="catsbox" style="margin-top:12px">${catsTelaLista()}</div>
+   <button class="btn full" style="margin-top:12px" onclick="closeSheet()">Fechar</button>`;
+  openSheet();
+}
+function catEditar(k){
+  __ctx=null;
+  const atual=k?catList().find(c=>c.k===k):null, base=k&&CATS_BASE.some(x=>x.k===k);
+  const uso=k?D.pagar.filter(p=>(p.cat||catLocal(p))===k).length:0;
+  $('sbody').innerHTML=`<h3>${k?'Editar':'Nova'} <em>categoria</em></h3>
+   <div class="sd">${base?'Categoria padrão · você pode renomear ou ocultar.':'A cor é definida automaticamente.'}</div>
+   <div class="f"><label>Nome</label><input id="cat_n" value="${atual?esc(atual.k).replace(/"/g,'&quot;'):''}" autocomplete="off"></div>
+   ${atual?`<div class="tr" style="border:none;padding:6px 0"><div style="width:16px;height:16px;border-radius:50%;background:${atual.c};flex:0 0 auto"></div><div class="nm"><div class="t2">Cor automática</div></div></div>`:''}
+   <button class="btn g full" style="margin-top:6px" onclick="catSalvar(${k?JSON.stringify(k):'null'})">Salvar</button>
+   ${k?`<button class="btn del full" style="margin-top:8px" onclick="catExcluir(${JSON.stringify(k)})">${base?'Ocultar categoria':'Excluir categoria'}</button>`:''}
+   <button class="btn full" style="margin-top:8px" onclick="catsAbrir()">Voltar</button>
+   ${k&&uso?`<div class="ia-nota" style="margin-top:12px">${uso} ${uso===1?'conta usa':'contas usam'} esta categoria. ${base?'Ocultar':'Excluir'} move ${uso===1?'ela':'elas'} para “Outros”.</div>`:''}`;
+  openSheet();
+}
+function catSalvar(k){
+  const nome=($('cat_n').value||"").trim().slice(0,28);
+  if(!nome) return toast("Informe o nome");
+  if(catList().some(c=>normNome(c.k)===normNome(nome) && c.k!==k)) return toast("Já existe uma categoria com esse nome");
+  if(!D.cats) D.cats={extra:[],ocultas:[]};
+  if(k){ if(normNome(k)!==normNome(nome)){
+      D.pagar.forEach(p=>{ if(p.cat===k) p.cat=nome; });
+      const b=CATS_BASE.find(x=>x.k===k);
+      if(b){ if(!D.cats.ocultas.includes(k)) D.cats.ocultas.push(k); D.cats.extra.push({k:nome,c:b.c}); }
+      else { const e=D.cats.extra.find(x=>x.k===k); if(e) e.k=nome; } } }
+  else D.cats.extra.push({k:nome,c:catAutoCor(nome)});
+  save(); catAtualiza(); catsAbrir(); toast(k?"Categoria atualizada":"Categoria criada");
+}
+function catExcluir(k){
+  const base=CATS_BASE.some(x=>x.k===k);
+  D.pagar.forEach(p=>{ if(p.cat===k) p.cat="Outros"; });
+  if(!D.cats) D.cats={extra:[],ocultas:[]};
+  if(base){ if(!D.cats.ocultas.includes(k)) D.cats.ocultas.push(k); } else D.cats.extra=D.cats.extra.filter(x=>x.k!==k);
+  save(); catAtualiza(); catsAbrir(); toast(base?"Categoria oculta":"Categoria excluída");
+}
+function catAtualiza(){ if(view==='config') show('config'); }
 /* ═══════ CONSULTOR IA (categorias, análise, planos e conversa) ═══════ */
-const CATS=[
+const CATS_BASE=[
  {k:"Moradia",c:"#16283C"},{k:"Alimentação",c:"#A5552F"},{k:"Transporte",c:"#5B7A8C"},{k:"Saúde",c:"#2F6B4F"},
  {k:"Educação",c:"#6B5B95"},{k:"Lazer",c:"#C9A43B"},{k:"Assinaturas",c:"#8F7318"},{k:"Trabalho",c:"#3F6E8C"},
  {k:"Impostos e taxas",c:"#9E3B2E"},{k:"Investimentos",c:"#4E7D5B"},{k:"Compras",c:"#B0678A"},{k:"Outros",c:"#8C96A2"}];
+const CAT_PALETA=["#16283C","#A5552F","#5B7A8C","#2F6B4F","#6B5B95","#C9A43B","#8F7318","#3F6E8C","#9E3B2E","#4E7D5B","#B0678A","#7A6A55","#C08457","#4C6B4A","#8C4A6B","#2E5A6E"];
+function catList(){ const oc=(D.cats&&D.cats.ocultas)||[], extra=(D.cats&&D.cats.extra)||[];
+  return CATS_BASE.filter(c=>!oc.includes(c.k)).concat(extra.map(c=>({k:c.k,c:c.c||catAutoCor(c.k)}))); }
+function catAutoCor(k){ let h=0; for(let i=0;i<String(k).length;i++) h=(h*31+k.charCodeAt(i))>>>0; return CAT_PALETA[h%CAT_PALETA.length]; }
+Object.defineProperty(window,'CATS',{get:catList});
 const CAT_REGRAS=[
  [/aluguel|condom|moradia|iptu|luz|energia|[aá]gua|g[aá]s|internet|celular|telefone|casa/i,"Moradia"],
  [/mercado|supermerc|ifood|restaurante|padaria|lanche|a[cç]ougue|hortifruti|caf[eé]|pizza|comida|alimenta/i,"Alimentação"],
@@ -830,7 +907,7 @@ const CAT_REGRAS=[
  [/est[uú]dio|dom[ií]nio|hospedagem|servidor|vercel|figma|adobe|software|cliente|freela/i,"Trabalho"]];
 function catLocal(p){ if(p.inv) return "Investimentos"; if(p.sub) return "Assinaturas";
   const t=String(p.n||""); for(const [re,c] of CAT_REGRAS){ if(re.test(t)) return c; } return null; }
-function catCor(k){ const c=CATS.find(x=>x.k===k); return c?c.c:"#8C96A2"; }
+function catCor(k){ const c=catList().find(x=>x.k===k); return c?c.c:catAutoCor(k); }
 function gastosPorCat(comp){ const L=D.pagar.filter(p=>(p.comp||D.config.compAtual)===(comp||D.config.compAtual)), tot=L.reduce((a,b)=>a+ +b.v,0), o={};
   L.forEach(p=>{ const k=p.cat||catLocal(p)||"Outros"; const x=o[k]||(o[k]={v:0,n:0,top:null,itens:[]});
     x.v+=(+p.v); x.n++; x.itens.push(p); if(!x.top||+p.v>+x.top.v) x.top=p; });
@@ -1133,6 +1210,7 @@ function config(){
    </div>
    <button class="btn g full" style="margin-top:8px;" onclick="syncApplePay(true)">Sincronizar</button>
   </div>`:''}
+  ${catsCard()}
   <div class="lab">Backup</div><div class="card">
    <div class="tr"><div class="nm"><div class="t1">Seus dados</div><div class="t2" id="dbinfo">—</div></div></div>
    <div class="actions" style="margin-top:4px;">
@@ -1412,7 +1490,36 @@ function show(v){
     __showT=setTimeout(()=>{ __showT=null; m.removeAttribute('aria-busy'); m.classList.add('fx-out'); render(); }, SKEL_MS);
   }, novaAba?90:140);
 }
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{ try{navigator.vibrate&&navigator.vibrate(5)}catch(e){} show(b.dataset.v); });
+/* ═══════ DESLIZAR ITENS (revela ações) ═══════ */
+(function(){
+  let alvo=null, x0=0, y0=0, w=0, aberto=null, decidiu=false, horiz=false;
+  const fechar=el=>{ if(el){ el.style.transform=''; if(aberto===el) aberto=null; } };
+  document.addEventListener('touchstart',e=>{
+    const f=e.target.closest('.sw-front'); 
+    if(aberto && aberto!==f) fechar(aberto);
+    if(!f||e.touches.length!==1){ alvo=null; return; }
+    alvo=f; const t=e.touches[0]; x0=t.clientX; y0=t.clientY;
+    w=f.parentNode.querySelector('.swipe-bg').offsetWidth; decidiu=false; horiz=false;
+    f.style.transition='none';
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!alvo) return; const t=e.touches[0], dx=t.clientX-x0, dy=t.clientY-y0;
+    if(!decidiu){ if(Math.abs(dx)<6&&Math.abs(dy)<6) return; decidiu=true; horiz=Math.abs(dx)>Math.abs(dy); }
+    if(!horiz) return;
+    const base=aberto===alvo?-w:0; let x=base+dx; x=Math.max(-w-10,Math.min(0,x));
+    alvo.style.transform='translateX('+x+'px)';
+  },{passive:true});
+  function fim(){
+    if(!alvo){ return; } alvo.style.transition='';
+    if(horiz){ const m=new DOMMatrix(getComputedStyle(alvo).transform); const x=m.m41;
+      if(x<-w*0.4){ alvo.style.transform='translateX('+(-w)+'px)'; aberto=alvo; try{navigator.vibrate&&navigator.vibrate(6)}catch(e){} }
+      else fechar(alvo); }
+    alvo=null;
+  }
+  document.addEventListener('touchend',fim); document.addEventListener('touchcancel',fim);
+  document.addEventListener('click',e=>{ if(aberto && !e.target.closest('.swipe')) fechar(aberto); },true);
+})();
 /* ═══════ TAB BAR LIQUID GLASS ═══════ */
 function moveLens(){
   const nb=$('tabbar'), on=nb&&nb.querySelector('button.on'), ln=$('lens'); if(!on||!ln) return;
@@ -1569,17 +1676,31 @@ function verConta(id,idx){
 }
 
 function openSheet(){
-  const sh=$('sheet'); sh.classList.add('show');
-  // força reflow pra transição rodar
-  void sh.offsetWidth;
-  sh.classList.add('on');
+  const sh=$('sheet'), sb=$('sb'); sb.style.transition=''; sb.style.transform='';
+  sh.classList.add('show'); void sh.offsetWidth; sh.classList.add('on');
 }
 function closeSheet(){
-  const sh=$('sheet');
+  const sh=$('sheet'), sb=$('sb'); if(sb){ sb.style.transition=''; sb.style.transform=''; }
   sh.classList.remove('on');
   setTimeout(()=>{ if(!sh.classList.contains('on')) sh.classList.remove('show'); }, 420);
 }
 $('sheet').onclick=e=>{ if(e.target.id==='sheet') closeSheet(); };
+/* arrastar a sheet para baixo para fechar (gesto do iOS) */
+(function(){
+  const sh=$('sheet'), sb=$('sb'); if(!sh||!sb) return;
+  let y0=null, dy=0, arrast=false, t0=0;
+  const podeIniciar=t=> t===$('grab') || sb.scrollTop<=0;   // só do topo/alça, senão é rolagem
+  sb.addEventListener('touchstart',e=>{ if(e.touches.length!==1||!podeIniciar(e.target)) return;
+    y0=e.touches[0].clientY; dy=0; arrast=false; t0=Date.now(); sb.style.transition='none'; },{passive:true});
+  sb.addEventListener('touchmove',e=>{ if(y0===null) return; const d=e.touches[0].clientY-y0;
+    if(!arrast){ if(d<6) return; arrast=true; } dy=Math.max(0,d);
+    sb.style.transform='translateY('+dy+'px)'; },{passive:true});
+  function fim(){ if(y0===null) return; sb.style.transition='';
+    const rapido=(Date.now()-t0)<300 && dy>60;
+    if(dy>sb.offsetHeight*0.28 || rapido){ sb.style.transform='translateY(100%)'; closeSheet(); }
+    else sb.style.transform=''; y0=null; dy=0; arrast=false; }
+  sb.addEventListener('touchend',fim); sb.addEventListener('touchcancel',fim);
+})();
 
 function verMes(idx){
   const targetComp=compMais(D.config.compAtual,idx);
@@ -1979,7 +2100,10 @@ const EN={
  "Apagar todos os lançamentos e metas?\nEssa ação não tem volta.":"Delete all entries and goals?\nThis can't be undone.",
  "Este aparelho tem dados de antes do login.\n\nOK = usar os dados deste aparelho\nCancelar = usar os dados da nuvem":"This device has data from before sign-in.\n\nOK = use this device's data\nCancel = use the cloud data",
  "Sair desta conta neste aparelho?":"Sign out of this account on this device?",
- "CONSULTOR IA":"AI ADVISOR","Consultor":"AI","IA":"Advisor","Analisar ›":"Analyze ›","Ver planos ›":"See plans ›","Categoria":"Category","Automática":"Automatic",
+ "Categorias":"Categories","Gerenciar categorias":"Manage categories","+ Nova categoria":"+ New category","Toque para editar. A cor é automática.":"Tap to edit. The color is automatic.","padrão":"default","personalizada":"custom","Cor automática":"Automatic color","A cor é definida automaticamente.":"The color is set automatically.",
+ "Categoria padrão · você pode renomear ou ocultar.":"Default category · you can rename or hide it.","Ocultar categoria":"Hide category","Excluir categoria":"Delete category",
+ "Informe o nome":"Enter the name","Já existe uma categoria com esse nome":"A category with this name already exists","Categoria criada":"Category created","Categoria atualizada":"Category updated",
+ "Categoria oculta":"Category hidden","Categoria excluída":"Category deleted","CONSULTOR IA":"AI ADVISOR","Consultor":"AI","IA":"Advisor","Analisar ›":"Analyze ›","Ver planos ›":"See plans ›","Categoria":"Category","Automática":"Automatic",
  "Moradia":"Housing","Alimentação":"Food","Transporte":"Transport","Saúde":"Health","Educação":"Education","Lazer":"Leisure","Assinaturas":"Subscriptions","Trabalho":"Work",
  "Impostos e taxas":"Taxes & fees","Investimentos":"Investments","Compras":"Shopping","Outros":"Other",
  "Entende seus gastos, organiza por categoria e sugere planos.":"Understands your spending, sorts it by category and suggests plans.",
