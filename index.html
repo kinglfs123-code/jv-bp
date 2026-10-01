@@ -1196,6 +1196,11 @@ function config(){
      `<button class="tseg ${modo===k?'on':''}" onclick="setTema('${k}');show('config')">${l}</button>`).join("")}
    </div>
   </div>
+  ${__user?'':`<div class="lab">Conta</div><div class="card">
+   <div class="tr"><div class="nm"><div class="t1">Você não está conectado</div>
+    <div class="t2">Os dados ficam só neste aparelho${__motivoLocal?' · '+__motivoLocal:''}.</div></div></div>
+   <button class="btn g full" style="margin-top:4px;" onclick="conectarNuvem()">Entrar ou criar conta</button>
+  </div>`}
   ${__user?`<div class="lab">Conta</div><div class="card">
    <div class="tr"><div class="nm"><div class="t1">${__user.email}</div><div class="t2" id="nuvemst">${nuvemTxt()}</div></div></div>
    <button class="btn full" style="margin-top:4px;" onclick="sairConta()">Sair</button>
@@ -1907,14 +1912,29 @@ function statusNuvem(st){ __nuvemSt=st; if(st==="ok") __nuvemTs=Date.now(); cons
 async function lerNuvem(){ const {data,error}=await comPrazo(sb.from("bp_state").select("data,rev").eq("user_id",__user.id).maybeSingle(),10000); if(error) throw error; return data; }
 function aplicarNuvem(row){ D=novoEstado(row.data); __rev=row.rev; normaliza(); marcarBase(); DB.gravar(D); salvarSync(); show(view||"painel"); }
 
-async function cloudBoot(){
-  DB.init();
-  const cfg=/^https?:$/.test(location.protocol) && window.supabase ? await cfgSupabase() : null;
-  if(!cfg){ await load(); return; }                       // sem Supabase configurado: modo local
+let __motivoLocal="";
+function iniciarSb(cfg){
   sb=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   sb.auth.onAuthStateChange((ev,ses)=>{ if(ev==="PASSWORD_RECOVERY") authModo("nova"); if(ev==="SIGNED_OUT" && __user) sairLocal(); });
+}
+async function cloudBoot(){
+  DB.init();
+  __motivoLocal = !/^https?:$/.test(location.protocol) ? "aberto como arquivo, fora do site"
+    : !window.supabase ? "a biblioteca da nuvem não carregou" : "";
+  const cfg=__motivoLocal ? null : await cfgSupabase();
+  if(!cfg){ if(!__motivoLocal) __motivoLocal="o servidor não respondeu a configuração"; await load(); return; }   // modo local
+  iniciarSb(cfg);
   const {data:{session}}=await sb.auth.getSession();
   if(session && session.user) await entrar(session.user); else authModo("entrar");
+}
+// botão "Entrar" quando o app está sem login
+async function conectarNuvem(){
+  if(sb){ authModo("entrar"); return; }
+  if(!/^https?:$/.test(location.protocol)) return toast("Abra pelo endereço jv-bp.vercel.app",2600);
+  if(!window.supabase) return toast("Sem conexão com a nuvem · verifique a internet",2600);
+  const cfg=await cfgSupabase();
+  if(!cfg) return toast("Servidor sem configuração do Supabase",2600);
+  iniciarSb(cfg); __motivoLocal=""; authModo("entrar");
 }
 async function entrar(user){
   __user=user; DB.key="bp-financeiro:"+user.id;
@@ -2100,7 +2120,9 @@ const EN={
  "Apagar todos os lançamentos e metas?\nEssa ação não tem volta.":"Delete all entries and goals?\nThis can't be undone.",
  "Este aparelho tem dados de antes do login.\n\nOK = usar os dados deste aparelho\nCancelar = usar os dados da nuvem":"This device has data from before sign-in.\n\nOK = use this device's data\nCancel = use the cloud data",
  "Sair desta conta neste aparelho?":"Sign out of this account on this device?",
- "Categorias":"Categories","Gerenciar categorias":"Manage categories","+ Nova categoria":"+ New category","Toque para editar. A cor é automática.":"Tap to edit. The color is automatic.","padrão":"default","personalizada":"custom","Cor automática":"Automatic color","A cor é definida automaticamente.":"The color is set automatically.",
+ "Categorias":"Categories","Você não está conectado":"You're not signed in","Entrar ou criar conta":"Sign in or create account",
+ "Abra pelo endereço jv-bp.vercel.app":"Open it at jv-bp.vercel.app","Sem conexão com a nuvem · verifique a internet":"Can't reach the cloud · check your connection",
+ "Servidor sem configuração do Supabase":"Server missing Supabase setup","Gerenciar categorias":"Manage categories","+ Nova categoria":"+ New category","Toque para editar. A cor é automática.":"Tap to edit. The color is automatic.","padrão":"default","personalizada":"custom","Cor automática":"Automatic color","A cor é definida automaticamente.":"The color is set automatically.",
  "Categoria padrão · você pode renomear ou ocultar.":"Default category · you can rename or hide it.","Ocultar categoria":"Hide category","Excluir categoria":"Delete category",
  "Informe o nome":"Enter the name","Já existe uma categoria com esse nome":"A category with this name already exists","Categoria criada":"Category created","Categoria atualizada":"Category updated",
  "Categoria oculta":"Category hidden","Categoria excluída":"Category deleted","CONSULTOR IA":"AI ADVISOR","Consultor":"AI","IA":"Advisor","Analisar ›":"Analyze ›","Ver planos ›":"See plans ›","Categoria":"Category","Automática":"Automatic",
@@ -2184,6 +2206,7 @@ const REGRAS=[
  [new RegExp("^(\\d+)% das saídas de (janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\\.$","i"),(_,n,m)=>n+"% of "+mesEN(m)+" expenses."],
  [/^(\d+) categorias?$/,(_,n)=>n+plural(n," category"," categories")],
  [/^maior: (.+)$/,(_,n)=>"largest: "+n],
+ [/^Os dados ficam só neste aparelho(.*)\.$/,(_,r)=>"Your data stays only on this device"+(r?" · "+({" · aberto como arquivo, fora do site":"opened as a file, outside the site"," · a biblioteca da nuvem não carregou":"the cloud library didn't load"," · o servidor não respondeu a configuração":"the server didn't return the setup"}[r]||r.replace(/^ · /,"")):"")+"."],
  [/^Automática · (.+)$/,(_,c)=>"Automatic · "+tr(c)],
  [/^(\+R\$ [\d.,]+)\/mês( · (\d+) m(?:ês|eses))?$/,(_,v,x,n)=>v+"/mo"+(n?" · "+n+plural(n," month"," months"):"")],
  [/^Meta criada ✓$/,()=>"Goal created ✓"],
