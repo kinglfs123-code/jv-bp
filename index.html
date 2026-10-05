@@ -134,6 +134,8 @@ transform:translateY(100%);transition:transform .42s cubic-bezier(.32,.72,0,1);
 transform:translateX(-50%) translateY(14px) scale(.96);background:var(--ink);color:var(--paper);
 padding:12px 20px;border-radius:99px;font-family:'JetBrains Mono';font-size:calc(11px * var(--fs,1));
 z-index:80;opacity:0;transition:transform .34s cubic-bezier(.32,.72,0,1),opacity .22s;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis;}
+.toast.comacao{display:flex;align-items:center;gap:14px;}
+.toast .undo{background:none;border:none;color:var(--gold-l);font-family:'JetBrains Mono';font-weight:700;font-size:calc(12px * var(--fs,1));cursor:pointer;padding:0;}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}
 .empty{text-align:center;padding:34px 20px;color:var(--gray);font-size:calc(13px * var(--fs,1));line-height:1.6;}
 /* Transições Apple-style */
@@ -333,9 +335,19 @@ background:var(--white);color:var(--ink);cursor:pointer;}
 .swipe+.swipe{border-top:1px solid var(--line);}
 .swipe-bg{position:absolute;inset:0;display:flex;justify-content:flex-end;}
 .sw-act{border:none;color:#fff;font-family:'JetBrains Mono';font-size:calc(11px * var(--fs,1));font-weight:700;letter-spacing:.04em;width:84px;flex:0 0 auto;cursor:pointer;}
-.sw-act.pagar{background:var(--green);} .sw-act.reabrir{background:var(--gray);} .sw-act.editar{background:var(--navy);}
+.sw-act.pagar{background:var(--green);} .sw-act.reabrir{background:var(--gray);} .sw-act.excluir{background:var(--red);}
 .sw-front{position:relative;background:var(--white);transition:transform .28s cubic-bezier(.32,.72,0,1);touch-action:pan-y;will-change:transform;}
 .swipe .tr{border-bottom:none;}
+/* saldo em destaque */
+.saldobox{background:var(--navy);border-radius:16px;padding:16px 18px;position:relative;margin-bottom:2px;}
+.saldobox .k{font-family:'JetBrains Mono';font-size:calc(10px * var(--fs,1));letter-spacing:.14em;color:var(--gold-l);}
+.saldobox .v{font-family:'Playfair Display';font-size:calc(34px * var(--fs,1));color:var(--paper);line-height:1.05;margin-top:4px;white-space:nowrap;}
+.saldobox .mes{position:absolute;right:18px;bottom:18px;font-size:calc(13px * var(--fs,1));color:#8FA0B4;}
+/* aviso de virar mês */
+.avisomes{background:var(--navy);border-radius:16px;padding:16px 18px;margin-bottom:12px;}
+.avisomes .k{font-family:'JetBrains Mono';font-size:calc(9px * var(--fs,1));letter-spacing:.14em;color:var(--gold-l);}
+.avisomes .t{font-family:'Playfair Display';font-size:calc(22px * var(--fs,1));color:var(--paper);margin:4px 0 12px;}
+.avisomes .btn{width:100%;}
 /* consultor IA */
 .ia-card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px;cursor:pointer;transition:transform .2s var(--ease-ios);}
 .ia-card:active{transform:scale(.985);}
@@ -661,19 +673,17 @@ function painel(){
   }
   const maxMes=Math.max(...meses.map(x=>x.tot),1);
 
-  let h=`<div class="saud">
-    <div class="s1">${sauda}${nome?`, ${nome}`:""}</div>
-    <div class="s2">Aqui está o resumo do seu ${(D.config.mes||"mês").toLowerCase()}.</div>
-   </div>
+  let h=`<div class="saud"><div class="s1">${sauda}${nome?`, ${nome}`:""}</div></div>
+   ${avisoMesHtml()}
+   <div class="saldobox"><div class="k">SALDO</div><div class="v">${BRL(c.saldo)}</div><div class="mes">${(D.config.mes||'').toLowerCase()}</div></div>
    <div class="kpis">
-   <div class="kpi"><div class="k">Entradas</div><div class="v">${BRL(c.entradas)}</div><div class="s">${D.receber.filter(inCur).length} lançamentos</div></div>
-   <div class="kpi"><div class="k">Saídas</div><div class="v">${BRL(c.saidas)}</div><div class="s">${D.pagar.filter(inCur).length} lançamentos</div></div>
-   <div class="kpi" style="grid-column:1/-1"><div class="k">Sobra</div><div class="v ${c.sobra>=0?'g':'rd'}">${BRL(c.sobra)}</div><div class="s">${c.sobra>=0?'vai para investimento':'atenção: negativo'}</div></div>
+   <div class="kpi"><div class="k">Entradas</div><div class="v">${BRL(c.entradas)}</div><div class="s">${D.receber.filter(inCur).length} itens</div></div>
+   <div class="kpi"><div class="k">Saídas</div><div class="v">${BRL(c.saidas)}</div><div class="s">${D.pagar.filter(inCur).length} itens</div></div>
   </div>
   <div class="fatura">
-   <div class="fatx"><div class="fk2">FATURA DE ${(D.config.mes||'').toUpperCase()}</div>
+   <div class="fatx"><div class="fk2">FATURA · ${(D.config.mes||'').toUpperCase()}</div>
     <div class="fv2">${BRL(c.aberto)} <span>em aberto</span></div></div>
-   <button class="btn g" onclick="fecharFatura()">Finalizar mês →</button>
+   <button class="btn g" onclick="fecharFatura()">Finalizar →</button>
   </div>
   <div class="lab">Faturas por mês</div>
   <div class="card mesescard">
@@ -684,7 +694,7 @@ function painel(){
       <div class="mesk">${x.label}${x.pass?' ✓':''}</div>
     </div>`).join("")}
    </div>
-   <div class="mesnota">${meses.some(x=>x.pass)?'Arraste para ver meses anteriores · toque para abrir.':'Toque em um mês para ver as contas.'}</div>
+   <div class="mesnota">${meses.some(x=>x.pass)?'Toque num mês para abrir.':'Toque num mês.'}</div>
   </div>
   ${iaCard()}`;
   return h;
@@ -733,7 +743,7 @@ function pagar(){
   <div class="lab"><span>Lançamentos · ${D.config.mes}</span><button class="btn sm" onclick="abrir('pagar')">+ Nova conta</button></div><div class="card">`;
   if(!lista.length) h+=`<div class="empty">Nenhuma conta em ${D.config.mes}.<br>Toque em <b>+ Nova conta</b> para começar.</div>`;
   lista.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).forEach(p=>{
-    h+=`<div class="swipe"><div class="swipe-bg"><button class="sw-act ${p.s?'reabrir':'pagar'}" onclick="pg('${p.id}')">${p.s?'Reabrir':'Pagar'}</button><button class="sw-act editar" onclick="abrir('pagar','${p.id}')">Editar</button></div>
+    h+=`<div class="swipe"><div class="swipe-bg"><button class="sw-act ${p.s?'reabrir':'pagar'}" onclick="pg('${p.id}')">${p.s?'Reabrir':'Pagar'}</button><button class="sw-act excluir" onclick="pedirExcluir('${p.id}')">Excluir</button></div>
      <div class="tr sw-front" data-id="${p.id}"><div class="dt">${p.d}</div>
      <div class="nm" onclick="verConta('${p.id}')"><div class="t1">${esc(p.n)}</div><div class="t2">${p.cat?p.cat+' · ':''}${p.f}${p.cartao?' · '+p.cartao:''}${p.ap?' ·  Pay':''}${cicloTxt(p)}</div></div>
      <div style="text-align:right;flex:0 0 auto;"><div class="vl">${BRL(p.v)}</div>
@@ -954,7 +964,15 @@ function iaResumo(){
     receitas:D.receber.filter(inCur).slice(0,40).map(r=>({descricao:r.n,valor:+r.v,tipo:r.t})),
     metas:D.metas.map(m=>({nome:m.n,alvo:+m.m,guardado:+m.a,pilar:pilarDe(m)})),
     patrimonio:guardado(), aporte_planejado:+D.config.aporte||0, rentabilidade_mensal_pct:+D.config.taxa||0,
-    historico:(D.hist||[]).slice(0,6).map(h=>({mes:h.mes+" "+h.ano,entradas:h.entradas,saidas:h.saidas,saldo:h.saldo})) };
+    custo_fixo_mes:D.pagar.filter(p=>inCur(p)&&!p.inv).reduce((a,x)=>a+ +x.v,0),
+    renda_passiva_mes:Math.round(rendaMes()*100)/100,
+    // histórico dos meses fechados, com categorias e aporte, para comparar e prever
+    historico:(D.hist||[]).slice(0,12).map(h=>({mes:(h.mes||"")+" "+(h.ano||""), entradas:+h.entradas||0, saidas:+h.saidas||0, saldo:+h.saldo||0,
+      guardado_em_metas:+h.metaTotal||0,
+      por_categoria:(h.itens&&h.itens.pagar?Object.entries(h.itens.pagar.reduce((o,p)=>{const k=p.cat||"Outros";o[k]=(o[k]||0)+(+p.v||0);return o;},{})).map(([categoria,valor])=>({categoria,valor:Math.round(valor*100)/100})):[]) })),
+    // média e tendência dos recorrentes ajudam a projetar os próximos meses
+    assinaturas_mensais:D.pagar.filter(p=>inCur(p)&&p.sub).reduce((a,x)=>a+ +x.v,0),
+    hoje:new Date().toISOString().slice(0,10) };
 }
 function iaCard(){
   const g=gastosPorCat(), a=D.ia&&D.ia.analise&&D.ia.analise.comp===D.config.compAtual?D.ia.analise:null;
@@ -997,7 +1015,7 @@ function iaAbrir(){
    <div id="ia_an">${a?iaAnaliseHtml(a):'<div class="ia-box"><div class="ia-txt" style="margin-top:0">Toque em <b>Analisar agora</b> para a IA ler suas contas e traçar planos.</div></div>'}</div>
    <div class="lab">Pergunte à IA</div>
    <div class="ia-chat" id="ia_chat">${__iaChat.map(m=>`<div class="ia-msg ${m.role==='user'?'u':'a'}">${esc(m.content)}</div>`).join("")}</div>
-   ${__iaChat.length?'':`<div class="ia-sug">${["Onde posso economizar?","Consigo aumentar meu aporte?","Como montar minha reserva?"].map(q=>`<button onclick="iaPerguntar(this.textContent)">${q}</button>`).join("")}</div>`}
+   ${__iaChat.length?'':`<div class="ia-sug">${QSUG.map(q=>`<button onclick="iaPerguntar(this.textContent)">${q}</button>`).join("")}</div>`}
    <div class="ia-in"><div class="f" style="flex:1;margin:0"><input id="ia_q" autocomplete="off" onkeydown="if(event.key==='Enter')iaPerguntar()"></div><button class="btn g" onclick="iaPerguntar()">Enviar</button></div>
    <div class="ia-nota">A IA recebe só descrições e valores das suas contas, sem e-mail ou CPF. As sugestões são educativas e não substituem um profissional.</div>
    <button class="btn full" style="margin-top:12px" onclick="closeSheet()">Fechar</button>`;
@@ -1029,16 +1047,169 @@ function iaCriarMeta(i){
   D.metas.push({id:uid(),n:nome,d:String(p.titulo||"").slice(0,80),m:Math.round(+p.meta.valor*100)/100,a:0,pilar:[1,2,3,4].includes(+p.meta.pilar)?+p.meta.pilar:4,at:"",em:"",rt:"",pz:"",aa:null,dy:null});
   p.metaCriada=true; save(); show(view); if($('ia_an')) $('ia_an').innerHTML=iaAnaliseHtml(D.ia.analise); toast("Meta criada");
 }
-async function iaPerguntar(q){
-  const inp=$('ia_q'); q=(q||(inp&&inp.value)||"").trim(); if(!q||__iaBusy) return;
-  if(inp) inp.value=""; __iaChat.push({role:"user",content:q.slice(0,800)});
+function iaPerguntar(q){
+  const inp=$('ia_q'); q=(q||(inp&&inp.value)||"").trim(); if(!q) return;
+  if(inp) inp.value=""; __iaChat.push({role:"user",content:q.slice(0,300)});
   const ch=$('ia_chat'); const sug=document.querySelector('.ia-sug'); if(sug) sug.remove();
-  if(ch){ ch.insertAdjacentHTML("beforeend",`<div class="ia-msg u">${esc(q)}</div><div class="ia-msg a" id="ia_wait">…</div>`); }
-  __iaBusy=true;
-  try{ const j=await iaChamar("chat",{resumo:iaResumo(),mensagens:__iaChat.slice(-10)});
-    __iaChat.push({role:"assistant",content:String(j.resposta||"")}); const w=$('ia_wait'); if(w){ w.textContent=j.resposta||""; w.removeAttribute("id"); } }
-  catch(e){ __iaChat.pop(); const w=$('ia_wait'); if(w){ w.textContent=iaErroTxt(e); w.removeAttribute("id"); } }
-  finally{ __iaBusy=false; }
+  let resp; try{ resp=responderLocal(q); }catch(e){ resp=null; }
+  if(!resp) resp=respostaNaoEntendi();
+  __iaChat.push({role:"assistant",content:resp});
+  if(ch){ ch.insertAdjacentHTML("beforeend",`<div class="ia-msg u">${esc(q)}</div><div class="ia-msg a">${esc(resp)}</div>`);
+    const sb=$('sb'); if(sb) sb.scrollTop=sb.scrollHeight; }
+}
+
+/* ═══════ RESPOSTAS POR CÓDIGO (sem IA, sem internet) ═══════ */
+function qNorm(t){ return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[?!.,;:]/g," ").replace(/\s+/g," ").trim(); }
+function mesCitado(q){
+  const toks=(" "+q+" ");
+  const cur=D.config.compAtual, pediuAnt=/mes passado|mes anterior|ultimo mes/.test(q);
+  if(pediuAnt) return compMais(cur,-1);
+  for(let i=0;i<12;i++){ const nome=qNorm(NOMES_MES[i]);
+    if(nome && new RegExp("(^| )"+nome+"( |$)").test(" "+q+" ")){
+      // escolhe o mês mais próximo da competência atual (passado ou futuro)
+      let melhor=null,dist=99; for(let k=-13;k<=13;k++){ const c=compMais(cur,k); if(+c.split("-")[1]-1===i && Math.abs(k)<dist){ melhor=c; dist=Math.abs(k); } }
+      return melhor;
+    }
+  }
+  return null;
+}
+function catCitada(q){
+  const cands=catList().map(c=>c.k).concat(["Outros"]);
+  let achou=null, maior=0;
+  cands.forEach(k=>{ const kn=qNorm(k); if(kn && q.includes(kn) && kn.length>maior){ achou=k; maior=kn.length; } });
+  if(achou) return achou;
+  // sinônimos comuns
+  const syn={ "comida":"Alimentação","mercado":"Alimentação","supermercado":"Alimentação","restaurante":"Alimentação","ifood":"Alimentação",
+    "aluguel":"Moradia","casa":"Moradia","luz":"Moradia","agua":"Moradia","energia":"Moradia","internet":"Moradia",
+    "uber":"Transporte","gasolina":"Transporte","combustivel":"Transporte","onibus":"Transporte","carro":"Transporte",
+    "remedio":"Saúde","farmacia":"Saúde","medico":"Saúde","academia":"Saúde","plano de saude":"Saúde",
+    "assinatura":"Assinaturas","assinaturas":"Assinaturas","streaming":"Assinaturas","netflix":"Assinaturas","spotify":"Assinaturas",
+    "cartao":"Compras","compra":"Compras","compras":"Compras","imposto":"Impostos e taxas","taxa":"Impostos e taxas",
+    "aporte":"Investimentos","investimento":"Investimentos","curso":"Educação","escola":"Educação","faculdade":"Educação","lazer":"Lazer","viagem":"Lazer" };
+  for(const kw in syn){ if(q.includes(kw)){ const alvo=syn[kw]; if(cands.includes(alvo)) return alvo; } }
+  return null;
+}
+function compNome(c){ return monthName(c).toLowerCase()+"/"+c.slice(0,4); }
+function calcComp(comp){
+  const P=D.pagar.filter(p=>(p.comp||D.config.compAtual)===comp), R=D.receber.filter(r=>(r.comp||D.config.compAtual)===comp);
+  const saidas=P.reduce((a,b)=>a+ +b.v,0), pago=P.filter(p=>p.s).reduce((a,b)=>a+ +b.v,0);
+  const entradas=R.reduce((a,b)=>a+ +b.v,0), sobra=entradas-saidas, taxa=entradas?Math.round(sobra/entradas*100):0;
+  return {saidas,pago,aberto:saidas-pago,entradas,sobra,taxa,nP:P.length,nPagas:P.filter(p=>p.s).length};
+}
+function gastoCatComp(comp,cat){ const L=D.pagar.filter(p=>(p.comp||D.config.compAtual)===comp && (p.cat||catLocal(p)||"Outros")===cat);
+  return {v:L.reduce((a,b)=>a+ +b.v,0), n:L.length, top:L.slice().sort((a,b)=>b.v-a.v)[0]}; }
+function fmtDif(atual,ant,menosEhBom){
+  const dif=atual-ant, pc=ant?Math.round(Math.abs(dif)/ant*100):0;
+  if(Math.abs(dif)<0.5) return {txt:"praticamente igual",bom:true};
+  const subiu=dif>0; const bom = menosEhBom ? !subiu : subiu;
+  return {txt:(subiu?"+":"−")+BRL(Math.abs(dif))+(pc?` (${pc}% ${subiu?'mais':'menos'})`:""), bom, subiu, dif, pc};
+}
+function histComps(){ // meses fechados com dados, do mais recente ao mais antigo
+  return (D.hist||[]).filter(h=>h.comp).slice().sort((a,b)=>b.comp.localeCompare(a.comp)); }
+function mediaMeses(campo){ const hs=histComps(); if(!hs.length) return null; return hs.reduce((a,h)=>a+(+h[campo]||0),0)/hs.length; }
+
+function responderLocal(qRaw){
+  const q=qNorm(qRaw), cur=D.config.compAtual, c=calcComp(cur);
+  const temHist=(D.hist||[]).some(h=>h.comp);
+  const pede=(...kw)=>kw.some(k=>q.includes(k));
+
+  // ----- PREVISÃO / PRÓXIMOS MESES -----
+  if(pede("vou gastar","vou receber","proximo mes","proximos meses","previsao","estimativa","futuro","que vem","ano que vem","daqui")){
+    const base=mediaMeses("saidas"); const saiMes=base!=null?base:c.saidas;
+    const ent=mediaMeses("entradas")!=null?mediaMeses("entradas"):c.entradas;
+    const alvoM=mesCitado(q);
+    if(!temHist) return `Ainda não há meses fechados para estimar. Feche o mês atual (Finalizar) e a previsão fica disponível.`;
+    if(alvoM && compDiff(cur,alvoM)>0){ const n=compDiff(cur,alvoM);
+      return `Estimativa para ${compNome(alvoM)}: saídas ~${BRL(saiMes)} e sobra ~${BRL(ent-saiMes)}.\nBaseado na média dos últimos meses mais os recorrentes. É estimativa, não garantia.`; }
+    return `Estimativa para os próximos meses: saídas ~${BRL(saiMes)}/mês e sobra ~${BRL(ent-saiMes)}/mês.\nBaseado na média dos meses fechados. É estimativa, não garantia.`;
+  }
+
+  // ----- COMPARAR COM OUTRO MÊS -----
+  if(pede("compar","vs","versus","mais que","menos que","em relacao","diferenca")){
+    if(!temHist) return `Ainda não há um mês fechado para comparar. Quando você fechar um mês, eu comparo com ele.`;
+    const alvo = mesCitado(q) && mesCitado(q)!==cur ? mesCitado(q) : histComps()[0].comp;
+    const a=calcComp(cur), b=calcComp(alvo);
+    const cat=catCitada(q);
+    if(cat){ const ga=gastoCatComp(cur,cat).v, gb=gastoCatComp(alvo,cat).v; const df=fmtDif(ga,gb,true);
+      return `${cat}: ${BRL(ga)} em ${compNome(cur)} vs ${BRL(gb)} em ${compNome(alvo)}.\n${df.txt==="praticamente igual"?"Praticamente igual.":("Você gastou "+df.txt+".")}`; }
+    const ds=fmtDif(a.saidas,b.saidas,true), dsob=fmtDif(a.sobra,b.sobra,false);
+    return `${compNome(cur)} vs ${compNome(alvo)}:\nSaídas ${ds.txt}.\nSobra ${dsob.subiu?"subiu":(dsob.txt==="praticamente igual"?"igual":"caiu")} ${dsob.txt==="praticamente igual"?"":dsob.txt}.`;
+  }
+
+  // ----- MAIOR GASTO / ONDE GASTEI MAIS -----
+  if(pede("maior gasto","onde gastei","gastei mais","maior despesa","maior conta","onde foi")){
+    const alvo=mesCitado(q)||cur; const g=gastosPorCat(alvo);
+    if(!g.lista.length) return `Não há gastos em ${compNome(alvo)}.`;
+    const t=g.lista[0];
+    return `Em ${compNome(alvo)}, o maior gasto é ${t.k}: ${BRL(t.v)} (${Math.round(t.pc)}%).\nMaior conta: ${t.top?esc(t.top.n)+" "+BRL(t.top.v):"—"}.`;
+  }
+
+  // ----- QUANTO GASTEI (categoria ou total) -----
+  if(pede("quanto gastei","quanto gasto","quanto foi","gasto em","gastei em","gastei com","total de gasto","total de saida","quanto saiu")){
+    const alvo=mesCitado(q)||cur; const cat=catCitada(q); const cc=calcComp(alvo);
+    if(cat){ const g=gastoCatComp(alvo,cat); if(!g.v) return `Nenhum gasto em ${cat} em ${compNome(alvo)}.`;
+      const tot=calcComp(alvo).saidas; return `Em ${compNome(alvo)} você gastou ${BRL(g.v)} em ${cat}${tot?` (${Math.round(g.v/tot*100)}% das saídas)`:""}.\n${g.n} ${g.n===1?"conta":"contas"}${g.top?", maior: "+esc(g.top.n)+" "+BRL(g.top.v):""}.`; }
+    return `Suas saídas em ${compNome(alvo)} somam ${BRL(cc.saidas)}.\nJá pago ${BRL(cc.pago)} · em aberto ${BRL(cc.aberto)}.`;
+  }
+
+  // ----- QUANTO RECEBI / ENTRADAS -----
+  if(pede("quanto recebi","quanto ganhei","minhas entradas","total de entrada","quanto entrou")){
+    const alvo=mesCitado(q)||cur; const cc=calcComp(alvo);
+    return `Entradas em ${compNome(alvo)}: ${BRL(cc.entradas)}.`;
+  }
+
+  // ----- QUANTO FALTA PAGAR -----
+  if(pede("falta pagar","quanto devo","em aberto","contas abertas","ainda tenho que pagar","a pagar")){
+    return `Em ${compNome(cur)} faltam ${BRL(c.aberto)} a pagar (${c.nP-c.nPagas} de ${c.nP} contas).`;
+  }
+
+  // ----- SOBRA / POUPANÇA -----
+  if(pede("minha sobra","quanto sobrou","quanto sobra","taxa de poupanca","quanto poupei","quanto poupo","consigo poupar")){
+    return `Em ${compNome(cur)} sua sobra é ${BRL(c.sobra)} e a taxa de poupança é ${c.taxa}%.`;
+  }
+
+  // ----- JÁ PAGO -----
+  if(pede("quanto paguei","ja paguei","contas pagas","quanto pago")){
+    return `Em ${compNome(cur)} você já pagou ${BRL(c.pago)} (${c.nPagas} de ${c.nP} contas).`;
+  }
+
+  // ----- PATRIMÔNIO / RESERVA / METAS -----
+  if(pede("patrimonio","quanto tenho guardado","quanto juntei","total guardado","meu patrimonio")){
+    return `Seu patrimônio (soma das metas) é ${BRL(guardado())}. Renda passiva estimada ${BRL(rendaMes())}/mês.`;
+  }
+  if(pede("reserva","emergencia","minhas metas","quanto na meta","falta para a meta","quanto guardei")){
+    if(!D.metas.length) return `Você ainda não tem metas cadastradas.`;
+    const linhas=D.metas.slice(0,4).map(m=>{ const pc=m.m?Math.round(m.a/m.m*100):0; return `${esc(m.n)}: ${BRL(m.a)}${m.m?` de ${BRL(m.m)} (${pc}%)`:""}`; });
+    return linhas.join("\n");
+  }
+
+  // ----- RESUMO DO MÊS -----
+  if(pede("resumo","como estou","como esta o mes","panorama","relatorio","balanco","visao geral")){
+    const g=gastosPorCat(cur); const top=g.lista[0];
+    return `${compNome(cur)}: entradas ${BRL(c.entradas)}, saídas ${BRL(c.saidas)}, sobra ${BRL(c.sobra)} (poupança ${c.taxa}%).\n${c.nPagas} de ${c.nP} contas pagas, ${BRL(c.aberto)} em aberto.${top?`\nMaior gasto: ${top.k} ${BRL(top.v)}.`:""}`;
+  }
+
+  // ----- NÃO ENTENDEU -----
+  return null;
+}
+const QSUG=["Resumo do mês","Qual meu maior gasto?","Quanto falta pagar?","Comparar com o mês passado","Quanto vou gastar no próximo mês?"];
+function respostaNaoEntendi(){
+  return `Não consegui entender. Tente perguntas como:\n• “quanto gastei em alimentação”\n• “qual meu maior gasto”\n• “comparar com o mês passado”\n• “quanto vou gastar no próximo mês”`;
+}
+/* ═══════ VIRAR MÊS (automático + aviso) ═══════ */
+function compHoje(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+function avisoMesHtml(){
+  const hoje=compHoje();
+  if(!D.config.compAtual || D.config.compAtual>=hoje) return "";
+  return `<div class="avisomes"><div class="k">NOVO MÊS</div><div class="t">Chegou ${monthName(hoje).toLowerCase()}</div>
+    <button class="btn g" onclick="avancarAte('${hoje}')">Ver ${monthName(hoje).toLowerCase()} →</button></div>`;
+}
+function avancarAte(alvo){
+  const _t=window.toast, _s=window.show; let n=0;
+  window.toast=()=>{}; window.show=()=>{};              // silencia enquanto fecha vários meses
+  try{ while(D.config.compAtual<alvo && n<60){ fecharFatura(); n++; } }
+  finally{ window.toast=_t; window.show=_s; }
+  save(); show('painel'); if(n) toast(`Avançou para ${monthName(D.config.compAtual).toLowerCase()}`);
 }
 /* ═══════ CONTEÚDO POR COMPETÊNCIA ═══════ */
 function contasDoComp(comp){
@@ -1560,6 +1731,10 @@ function tog(tp,id){
 let __ctx=null;
 function cicloTxt(p){ return p.sub?' · '+(p.ciclo||'mensal')+(p.ciclo==='anual'&&p.vAnual?' · 1/12 de '+BRL(p.vAnual):''):''; }
 function selo(p){ return `<span class="st st-fixo ${p.s?'ok':'no'}">${p.s?'PAGO':'ABERTO'}</span>`; }
+let __undo=null, __undoT=null;
+function toastUndo(msg,fn){ __undo=fn; const e=$('toast'); e.innerHTML=`<span>${msg}</span><button class="undo" onclick="fazerUndo()">DESFAZER</button>`;
+  e.classList.add('on','comacao'); clearTimeout(__undoT); __undoT=setTimeout(()=>{ e.classList.remove('on','comacao'); __undo=null; },5000); }
+function fazerUndo(){ const f=__undo; __undo=null; clearTimeout(__undoT); $('toast').classList.remove('on','comacao'); if(f) f(); }
 function pg(id){
   const it=D.pagar.find(x=>x.id===id); if(!it) return;
   tog('pagar',id);
@@ -1569,6 +1744,12 @@ function pg(id){
     if(__ctx.t==='mes') verMes(__ctx.idx);
     else if(__ctx.t==='conta') verConta(__ctx.id,__ctx.idx);
   }
+}
+function pedirExcluir(id){
+  const it=D.pagar.find(x=>x.id===id); if(!it) return;
+  if(it.inv && it.meta && it.s){ const m=D.metas.find(x=>x.id===it.meta); if(m) m.a=Math.max(0,(+m.a||0)- +it.v); }
+  const copia={...it}; D.pagar=D.pagar.filter(x=>x.id!==id); save(); show(view);
+  toastUndo(`${it.n} excluída`, ()=>{ D.pagar.push(copia); if(copia.inv && copia.meta && copia.s){ const m=D.metas.find(x=>x.id===copia.meta); if(m) m.a=(+m.a||0)+ +copia.v; } save(); show(view); });
 }
 function cfForma(){
   const v=document.getElementById('i_f').value;
@@ -1590,8 +1771,10 @@ function del(tp,id){
       if(m){ m.a=Math.max(0,(+m.a||0)- +it.v); }
     }
   }
+  const copia={...D[k].find(x=>x.id===id)};
   D[k]=D[k].filter(x=>x.id!==id);
-  save(); closeSheet(); show(view); toast("Removido");
+  save(); closeSheet(); show(view);
+  toastUndo("Item excluído", ()=>{ D[k].push(copia); save(); show(view); });
 }
 function abrir(tp,id){
   __ctx=null;
