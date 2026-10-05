@@ -1047,15 +1047,30 @@ function iaCriarMeta(i){
   D.metas.push({id:uid(),n:nome,d:String(p.titulo||"").slice(0,80),m:Math.round(+p.meta.valor*100)/100,a:0,pilar:[1,2,3,4].includes(+p.meta.pilar)?+p.meta.pilar:4,at:"",em:"",rt:"",pz:"",aa:null,dy:null});
   p.metaCriada=true; save(); show(view); if($('ia_an')) $('ia_an').innerHTML=iaAnaliseHtml(D.ia.analise); toast("Meta criada");
 }
-function iaPerguntar(q){
-  const inp=$('ia_q'); q=(q||(inp&&inp.value)||"").trim(); if(!q) return;
-  if(inp) inp.value=""; __iaChat.push({role:"user",content:q.slice(0,300)});
+async function iaPerguntar(q){
+  const inp=$('ia_q'); q=(q||(inp&&inp.value)||"").trim(); if(!q||__iaBusy) return;
+  if(inp) inp.value=""; __iaChat.push({role:"user",content:q.slice(0,500)});
   const ch=$('ia_chat'); const sug=document.querySelector('.ia-sug'); if(sug) sug.remove();
-  let resp; try{ resp=responderLocal(q); }catch(e){ resp=null; }
-  if(!resp) resp=respostaNaoEntendi();
-  __iaChat.push({role:"assistant",content:resp});
-  if(ch){ ch.insertAdjacentHTML("beforeend",`<div class="ia-msg u">${esc(q)}</div><div class="ia-msg a">${esc(resp)}</div>`);
-    const sb=$('sb'); if(sb) sb.scrollTop=sb.scrollHeight; }
+  const rolar=()=>{ const sb=$('sb'); if(sb) sb.scrollTop=sb.scrollHeight; };
+  // 1) tenta responder na hora, por código (grátis, offline)
+  let local=null; try{ local=responderLocal(q); }catch(e){ local=null; }
+  if(local){
+    __iaChat.push({role:"assistant",content:local});
+    if(ch){ ch.insertAdjacentHTML("beforeend",`<div class="ia-msg u">${esc(q)}</div><div class="ia-msg a">${esc(local)}</div>`); rolar(); }
+    return;
+  }
+  // 2) não entendeu por código → pergunta ao Gemini (se logado e configurado)
+  if(ch){ ch.insertAdjacentHTML("beforeend",`<div class="ia-msg u">${esc(q)}</div><div class="ia-msg a" id="ia_wait">…</div>`); rolar(); }
+  __iaBusy=true;
+  try{
+    const j=await iaChamar("chat",{resumo:iaResumo(),mensagens:__iaChat.slice(-10)});
+    const r=String(j.resposta||"").trim()||respostaNaoEntendi();
+    __iaChat.push({role:"assistant",content:r}); const w=$('ia_wait'); if(w){ w.textContent=r; w.removeAttribute("id"); } rolar();
+  }catch(e){
+    // sem IA disponível (sem login/limite/offline): devolve os exemplos do modo local
+    const m=(e&&e.message)||""; const r = (m==="login"||m==="limite") ? respostaNaoEntendi() : respostaNaoEntendi();
+    const w=$('ia_wait'); if(w){ w.textContent=r; w.removeAttribute("id"); } rolar();
+  }finally{ __iaBusy=false; }
 }
 
 /* ═══════ RESPOSTAS POR CÓDIGO (sem IA, sem internet) ═══════ */
