@@ -716,7 +716,7 @@ function painel(){
 
   let h=`<div class="saud"><div class="s1">${sauda}${nome?`, ${nome}`:""}</div></div>
    ${avisoMesHtml()}
-   <div class="saldobox"><div class="k">SALDO</div><div class="v">${BRL(c.saldo)}</div><div class="mes">${(D.config.mes||'').toLowerCase()}</div></div>
+   <div class="saldobox"><div class="k">SALDO</div><div class="v"${c.sobra<0?' style="color:#E07A6A"':''}>${BRL(c.sobra)}</div><div class="mes">${(D.config.mes||'').toLowerCase()}</div></div>
    <div class="kpis">
    <div class="kpi"><div class="k">Entradas</div><div class="v">${BRL(c.entradas)}</div><div class="s">${D.receber.filter(inCur).length} itens</div></div>
    <div class="kpi"><div class="k">Saídas</div><div class="v">${BRL(c.saidas)}</div><div class="s">${D.pagar.filter(inCur).length} itens</div></div>
