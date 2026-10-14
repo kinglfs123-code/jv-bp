@@ -307,6 +307,11 @@ cursor:pointer;overflow:hidden;transition:transform .2s var(--ease-ios);}
 .fo-pc .pc{font-family:'JetBrains Mono';font-size:calc(10px * var(--fs,1));color:var(--gray);text-align:right;margin-top:4px;}
 .fo-pc .mt{display:flex;justify-content:space-between;gap:10px;font-size:calc(12px * var(--fs,1));margin-top:12px;color:var(--ink);}
 .fo-pc .mt b{font-family:'JetBrains Mono';white-space:nowrap;}
+.fo-pc .fo-metas{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;display:grid;gap:7px;}
+.fo-pc .fo-metas div{display:flex;justify-content:space-between;gap:10px;font-size:calc(12.5px * var(--fs,1));}
+.fo-pc .fo-metas span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fo-pc .fo-metas b{font-family:'JetBrains Mono';white-space:nowrap;}
+.fo-pc .fo-metas .vz{color:var(--gray);font-size:calc(11.5px * var(--fs,1));}
 .fo-pc .tg{font-family:'JetBrains Mono';font-size:calc(9.5px * var(--fs,1));color:var(--gray);margin-top:8px;letter-spacing:.02em;}
 .fo-mbar{height:5px;background:var(--paper2);border-radius:99px;overflow:hidden;margin-top:8px;}
 .fo-mbar span{display:block;height:100%;background:var(--pc);border-radius:99px;}
@@ -426,6 +431,7 @@ background:var(--white);color:var(--ink);cursor:pointer;}
 .rel-cat .v{font-weight:700;white-space:nowrap;}
 .rel-cat .b{grid-column:1/-1;height:5px;background:#ECE7DB;border-radius:3px;overflow:hidden;}.rel-cat .b b{display:block;height:100%;border-radius:3px;}
 .rel-ft{margin-top:16px;text-align:center;color:#9AA1AB;font-size:calc(10px * var(--fs,1));}
+.f input:disabled{opacity:.55;cursor:not-allowed;}
 /* acesso */
 .auth{position:fixed;inset:0;z-index:90;background:var(--paper);display:flex;align-items:center;justify-content:center;
 padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));overflow-y:auto;}
@@ -606,12 +612,6 @@ function autoAvancarSilencioso(){
   finally{ window.toast=_t; window.show=_s; }
   save(); return true;
 }
-function autoAvancarMes(){
-  // vira o mês sozinho, como um app de banco, ao chegar o novo mês no calendário
-  const hoje=compHoje(); let n=0;
-  while(D.config.compAtual < hoje && n<60){ fecharFatura(); n++; }
-  return n>0;
-}
 function normaliza(){
   // migração: garante competência em cada conta
   if(!D.config.compAtual) D.config.compAtual="2026-08";
@@ -659,7 +659,7 @@ function valEq(a,b){ return Math.abs((+a||0)-(+b||0))<0.005; }
 function duplicata(tp,o,ignorarId){
   return (D[tp]||[]).find(x=>x.id!==ignorarId && compDe(x)===compDe(o) && normNome(x.n)===normNome(o.n) && (
     tp==="pagar" && (o.sub||x.sub) ? !!(o.sub&&x.sub) :
-    tp==="pagar" && (o.inv||x.inv) ? !!(o.inv&&x.inv) && x.meta===o.meta && x.d===o.d :
+    tp==="pagar" && (o.inv||x.inv) ? false :
     valEq(x.v,o.v) && x.d===o.d ));
 }
 function metaDuplicada(nome,ignorarId){ return D.metas.find(m=>m.id!==ignorarId && normNome(m.n)===normNome(nome)); }
@@ -787,7 +787,7 @@ function pagar(){
   lista.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).forEach(p=>{
     h+=`<div class="swipe"><div class="swipe-bg"><button class="sw-act ${p.s?'reabrir':'pagar'}" onclick="pg('${p.id}')">${p.s?'Reabrir':'Pagar'}</button><button class="sw-act excluir" onclick="pedirExcluir('${p.id}')">Excluir</button></div>
      <div class="tr sw-front" data-id="${p.id}"><div class="dt">${dtHtml(p)}</div>
-     <div class="nm" onclick="verConta('${p.id}')"><div class="t1">${esc(p.n)}</div><div class="t2">${p.cat&&!(p.sub&&p.cat==='Assinaturas')?p.cat+' · ':''}${p.f}${p.cartao?' · '+p.cartao:''}${p.ap?' ·  Pay':''}${cicloTxt(p)}</div></div>
+     <div class="nm" onclick="verConta('${p.id}')"><div class="t1">${esc(p.n)}</div><div class="t2">${p.cat&&!(p.sub&&p.cat==='Assinaturas')&&!(p.inv&&p.cat==='Investimentos')?p.cat+' · ':''}${p.f}${p.cartao?' · '+p.cartao:''}${p.ap?' ·  Pay':''}${cicloTxt(p)}</div></div>
      <div style="text-align:right;flex:0 0 auto;"><div class="vl">${BRL(p.v)}</div>
       <div style="margin-top:5px;">${selo(p)}</div></div></div></div>`;
   });
@@ -1433,8 +1433,8 @@ function contasDoComp(comp){
   const real=D.pagar.filter(p=>(p.comp||cur)===comp);
   if(comp<=cur) return real;
   const d=compDiff(cur,comp);
-  const prev=D.pagar.filter(p=>inCur(p) && (p.sub || p.inv))
-    .filter(p=>!real.some(r=>r.n===p.n && (r.sub||r.inv)))
+  const prev=D.pagar.filter(p=>inCur(p) && p.sub)
+    .filter(p=>!real.some(r=>r.n===p.n && r.sub))
     .map(p=>({...p,s:0,prev:1}));
   return real.concat(prev);
 }
@@ -1508,9 +1508,6 @@ function fecharFatura(){
       const alvo = nxt;
       novos.push({...p, id:uid(), comp:alvo, dt:shiftDt(p.dt,alvo,p.d), s:0});
       // instância atual: arquivada no histórico (some do ativo)
-    } else if(p.inv){
-      // aporte reaparece no próximo mês em aberto
-      novos.push({...p, id:uid(), comp:nxt, dt:shiftDt(p.dt,nxt,p.d), s:0});
     } else {
       // conta avulsa: paga → arquiva; em aberto → vira pro próximo mês (saldo rotativo)
       if(!p.s) novos.push({...p, comp:nxt, dt:shiftDt(p.dt,nxt,p.d)});
@@ -1632,7 +1629,12 @@ const PILARES=[
 ];
 const IPCA_REF=4.5;
 const pct1=n=>(Math.round((+n||0)*10)/10).toFixed(1).replace(".",",")+"%";
-function pilarDe(m){ return +m.pilar || 4; }
+function pilarPorNome(n){ const t=normNome(n);
+  if(/reserva|emergencia|liquidez|selic/.test(t)) return 1;
+  if(/renda fixa|tesouro|cdb|lci|lca|ipca|credito/.test(t)) return 2;
+  if(/variavel|acao|acoes|fii|etf|bolsa|multiplica|cripto/.test(t)) return 3;
+  return 4; }
+function pilarDe(m){ return +m.pilar || pilarPorNome(m.n); }
 function guardado(p){ return D.metas.filter(m=>!p||pilarDe(m)===p).reduce((s,m)=>s+ +m.a,0); }
 function taxaAA(m){ return m.aa!=null&&m.aa!==""?+m.aa:(((1+(+D.config.taxa||0)/100)**12-1)*100); }
 function rendaMes(p){ return D.metas.filter(m=>!p||pilarDe(m)===p).reduce((s,m)=>s+(+m.a)*((m.dy!=null&&m.dy!=="")?+m.dy:taxaAA(m))/1200,0); }
@@ -1671,12 +1673,11 @@ function invest(){
     <div><div class="fo-k">Renda passiva/mês</div><div class="fo-v g">${BRL(rendaMes())}</div><div class="fo-s">estimada pela carteira</div></div>
     <div><div class="fo-k">Aporte do mês</div><div class="fo-v">${BRL(aporteMes())}</div><div class="fo-s">plano ${BRL(plano)}</div></div>
    </div>
-   <div class="fo-acts"><button class="btn g" onclick="novoAporte()">+ Novo aporte</button><button class="btn" onclick="foMilhao()">Rumo ao milhão</button></div>
   </div>
   <div class="lab">Alocação por pilar</div><div class="card" id="fodonut">${foDonut()}</div>
   <div class="lab">Os 4 pilares</div>${PILARES.map(p=>foCard(p,tot)).join("")}
   <div class="lab">Evolução · estimado × real</div><div class="card" id="foevo">${foEvolucao()}</div>
-  <div class="mesnota" style="margin:14px 0 4px">${isFinite(falta)?`No plano atual, o primeiro milhão chega em ${tempoTxt(falta)} (${mesAno(falta)}).`:"Defina um aporte em Rumo ao milhão."}</div>`;
+  <div class="mesnota" style="margin:14px 0 4px">${isFinite(falta)?`No ritmo atual, o primeiro milhão chega em ${tempoTxt(falta)} (${mesAno(falta)}).`:""}</div>`;
 }
 function foCard(p,tot){
   const v=guardado(p.n), m=metricaPilar(p.n);
@@ -1685,7 +1686,7 @@ function foCard(p,tot){
     <div><div class="vl">${BRL(v)}</div><div class="pc">${pct1(tot?v/tot*100:0)} da carteira</div></div></div>
    <div class="mt"><span>${m.txt}</span><b>${m.val}</b></div>
    ${m.bar!=null?`<div class="fo-mbar"><span style="width:${m.bar}%"></span></div>`:''}
-   <div class="tg">${p.foco} · ${p.tags}</div>
+   <div class="fo-metas">${D.metas.filter(x=>pilarDe(x)===p.n).sort((a,b)=>b.a-a.a).map(x=>`<div><span>${esc(x.n)}</span><b>${BRL(x.a)}</b></div>`).join("")||'<div class="vz">Nenhuma meta neste pilar</div>'}</div>
   </div>`;
 }
 function foDonut(){
@@ -1742,45 +1743,6 @@ function foEvolucao(){
 function foEvoSel(m){ __foEvo=m===0?6:m; const e=$('foevo'); if(e) e.innerHTML=foEvolucao(); }
 
 /* Pop-up 1: aporte = o formulário de conta "Investimento" que já existe (credita a meta ao marcar como paga) */
-function novoAporte(pil){
-  abrir('pagar');
-  const f=$('i_f'); if(f){ f.value='Investimento'; cfForma(); }
-  const n=$('i_n'), sel=$('i_meta');
-  const alvo=D.metas.find(m=>pilarDe(m)===(pil||__foSel||0)) || null;
-  if(sel && alvo) sel.value=alvo.id;
-  const nomear=()=>{ const m=D.metas.find(x=>x.id===(sel&&sel.value)); if(n && m && (!n.value || /^Aporte( · |$)/.test(n.value))) n.value='Aporte · '+m.n; };
-  nomear(); if(sel) sel.addEventListener('change',nomear);
-}
-
-/* Pop-up 2: rumo ao milhão (único lugar que ajusta o plano de aporte e a taxa) */
-function foMilhao(){
-  __ctx=null;
-  $('sbody').innerHTML=`<h3>Rumo ao <em>milhão</em></h3><div class="sd">Partindo de ${BRL(guardado())} hoje.</div>
-   <div class="card fo-sim" id="fosim"></div>
-   <div class="f" style="margin-top:14px"><label>Aporte mensal · <b id="fs_al"></b></label>
-    <input type="range" id="fs_a" min="200" max="20000" step="100" value="${Math.round(+D.config.aporte||0)}" oninput="foSim()"></div>
-   <div class="f"><label>Rentabilidade · <b id="fs_tl"></b></label>
-    <input type="range" id="fs_t" min="0.3" max="1.5" step="0.05" value="${+D.config.taxa||0.9}" oninput="foSim()"></div>
-   <button class="btn g full" onclick="foSalvarPlano()">Salvar como meu plano</button>
-   <button class="btn full" style="margin-top:8px" onclick="closeSheet()">Fechar</button>`;
-  foSim(); openSheet();
-}
-function foSim(){
-  const A=+$('fs_a').value, t=+$('fs_t').value, i=t/100, P=guardado(), n=mesesAte(P,A,i);
-  $('fs_al').textContent=BRL(A);
-  $('fs_tl').textContent=t.toFixed(2).replace(".",",")+"% a.m. · "+pct1(((1+i)**12-1)*100)+" a.a.";
-  const marcos=[100000,250000,500000,1000000].filter(m=>m>P).map(m=>{ const k=mesesAte(P,A,i,m);
-    return `<div class="fo-ms"><span>R$ ${K(m)}</span><b>${tempoTxt(k)} · ${mesAno(k)}</b></div>`; }).join("");
-  const juros=isFinite(n)?Math.max(0,1e6-P-A*n):0;
-  $('fosim').innerHTML=`<div style="padding:14px 0 10px"><div class="fo-k">Primeiro milhão em</div>
-    <div class="big" style="margin-top:6px">${tempoTxt(n)}</div>
-    <div class="fo-s" style="margin-top:6px">${mesAno(n)}${isFinite(n)?" · "+pct1(juros/1e6*100)+" vindo de juros":""}</div></div>
-    <div style="border-top:1px solid var(--line)">${marcos}</div>
-    <div style="border-top:1px solid var(--line);padding-top:4px">${[6,12,18,24].map(m=>`<div class="fo-ms"><span>Em ${m} meses</span><b>${BRL(montante(P,A,i,m))}</b></div>`).join("")}</div>`;
-}
-function foSalvarPlano(){ D.config.aporte=+$('fs_a').value; D.config.taxa=+$('fs_t').value; save(); closeSheet(); show('invest'); toast("Plano atualizado"); }
-
-/* Pop-up 3: detalhamento do pilar = as metas (posições) daquele pilar; editar usa o formulário de meta */
 function foPilar(n){
   __ctx=null;
   const p=PILARES[n-1], L=D.metas.filter(m=>pilarDe(m)===n).sort((a,b)=>b.a-a.a), tp=guardado(n), tot=guardado(), m=metricaPilar(n);
@@ -1801,28 +1763,28 @@ function foPilar(n){
       <div class="fo-ms"><span>Plano de aporte</span><b>${BRL(+D.config.aporte||0)}</b></div></div>`;
   }
   h+=`<div class="lab">Ativos</div><div class="card">`;
-  if(!L.length) h+=`<div class="empty">Nenhuma posição neste pilar.<br>Toque em + Ativo ou mude o pilar de uma meta.</div>`;
+  if(!L.length) h+=`<div class="empty">Nenhuma posição neste pilar.<br>Cadastre na aba Metas.</div>`;
   L.forEach(a=>{ const pr=a.m?Math.min(100,Math.round(a.a/a.m*100)):0;
-    h+=`<div class="tr fo-at" onclick="abrir('meta','${a.id}')" style="cursor:pointer">
+    h+=`<div class="tr fo-at">
      <div class="nm"><div class="t1">${esc(a.n)}</div>
-      <div class="t2">${a.at||'ativo —'} · ${a.em||'emissor —'}</div><div class="t2" style="margin-top:2px">resgate ${a.pz||'—'}</div></div>
+      <div class="t2">${[a.at,a.em].filter(Boolean).map(esc).join(' · ')||esc(a.d||'')}</div>${a.pz?`<div class="t2" style="margin-top:2px">resgate ${esc(a.pz)}</div>`:''}</div>
      <div style="text-align:right;flex:0 0 auto"><div class="vl">${BRL(a.a)}</div>
       <div class="rn">${a.rt||pct1(taxaAA(a))+' a.a.'}</div>
       <div class="t2" style="margin-top:2px">${pct1(tp?a.a/tp*100:0)} do pilar · meta ${pr}%</div></div></div>`; });
   h+=`</div>
-   <div class="actions" style="margin-top:12px"><button class="btn full" onclick="abrir('meta');$('i_pl').value='${n}'">+ Ativo</button><button class="btn g full" onclick="novoAporte(${n})">+ Aporte</button></div>
-   <button class="btn full" style="margin-top:8px" onclick="closeSheet()">Fechar</button>`;
+   <button class="btn full" style="margin-top:12px" onclick="closeSheet()">Fechar</button>`;
   $('sbody').innerHTML=`<div style="font-family:'JetBrains Mono';font-size:calc(9px * var(--fs,1));letter-spacing:.14em;color:${p.cor};font-weight:700">PILAR ${n}</div><h3 style="margin-top:4px">${p.nome}</h3>${h}`;
   openSheet();
 }
 
 function metas(){
-  let h=`<div class="lab"><span></span><button class="btn sm" onclick="abrir('meta')">+ Nova meta</button></div>`;
+  let h=`<div class="lab"><span></span><button class="btn sm" onclick="abrir('meta')">+ Nova meta</button></div>
+   <div class="hint" style="margin:0 0 12px">Para aportar: Pagar → nova conta → forma Investimento.</div>`;
   if(!D.metas.length) h+=`<div class="empty">Nenhuma meta ainda.</div>`;
   D.metas.forEach(m=>{
     const pct=m.m?Math.min(100,Math.round(m.a/m.m*100)):0;
     h+=`<div class="goal" onclick="abrir('meta','${m.id}')">
-     <div class="h"><div><div class="n">${esc(m.n)}</div><div class="d">${esc(m.d)}</div></div>
+     <div class="h"><div><div class="mk" style="color:${PILARES[pilarDe(m)-1].cor};margin-bottom:4px;text-align:left">PILAR ${pilarDe(m)} · ${PILARES[pilarDe(m)-1].curto.toUpperCase()}</div><div class="n">${esc(m.n)}</div><div class="d">${esc(m.d)}</div></div>
       <div><div class="mk">META</div><div class="mt">${BRL(m.m)}</div></div></div>
      <div class="pb"><div class="pf" style="width:${pct}%"></div></div>
      <div class="pr"><span class="c">${BRL(m.a)}</span><span class="p">${pct}%</span></div></div>`;});
@@ -2008,7 +1970,7 @@ function abrir(tp,id){
       ${["mensal","anual"].map(o=>`<option ${it&&it.ciclo===o?'selected':''}>${o}</option>`).join("")}</select>
       <div class="hint" style="margin:6px 0 0">Anual: informe o valor do ano; ele é dividido por 12 nos meses seguintes.</div></div>
      <div class="f" id="invmeta" style="display:${it&&it.f==='Investimento'?'block':'none'}"><label>Aportar para</label><select id="i_meta">
-      ${D.metas.length?D.metas.map(m=>`<option value="${m.id}" ${it&&it.meta===m.id?'selected':''}>${esc(m.n)}</option>`).join(""):'<option value="">Crie uma meta primeiro</option>'}</select></div>
+      ${D.metas.length?PILARES.map(pl=>{ const L=D.metas.filter(m=>pilarDe(m)===pl.n); return L.length?`<optgroup label="Pilar ${pl.n} · ${pl.curto}">${L.map(m=>`<option value="${m.id}" ${it&&it.meta===m.id?'selected':''}>${esc(m.n)}</option>`).join("")}</optgroup>`:''; }).join(""):'<option value="">Crie uma meta primeiro</option>'}</select></div>
      <div class="f"><label>Categoria</label><select id="i_cat"><option value="auto">Automática${it&&it.cat&&!it.catManual?' · '+it.cat:''}</option>
       ${CATS.map(c=>`<option value="${c.k}" ${it&&it.catManual&&it.cat===c.k?'selected':''}>${c.k}</option>`).join("")}</select></div>`;
   } else if(tp==="receber"){
@@ -2025,19 +1987,14 @@ function abrir(tp,id){
      <div class="f"><label>Tipo</label><select id="i_t">
       ${["Projeto","Recorrente"].map(o=>`<option ${it&&it.t===o?'selected':''}>${o}</option>`).join("")}</select></div>`;
   } else if(tp==="meta"){
-    titulo=it?"Editar <em>meta</em>":"Nova <em>meta</em>"; sub="Quanto quer juntar e quanto já tem.";
+    titulo=it?"Editar <em>meta</em>":"Nova <em>meta</em>"; sub="Preencha e toque em salvar.";
     h=`<div class="f"><label>Nome da meta</label><input id="i_n" value="${it?esc(it.n):''}"></div>
-     <div class="f"><label>Descrição</label><input id="i_d2" value="${it?it.d:''}"></div>
+     <div class="f"><label>Descrição</label><input id="i_d2" value="${it?esc(it.d||''):''}"></div>
      <div class="duo">
       <div class="f"><label>Valor da meta</label><input id="i_m" inputmode="numeric" value="${it?maskMoney(String(Math.round((+it.m||0)*100))):''}" oninput="this.value=maskMoney(this.value)"></div>
-      <div class="f"><label>Já guardado</label><input id="i_a" inputmode="numeric" value="${it?maskMoney(String(Math.round((+it.a||0)*100))):''}" oninput="this.value=maskMoney(this.value)"></div></div>
-     <div class="f"><label>Pilar</label><select id="i_pl">${PILARES.map(p=>`<option value="${p.n}" ${it&&pilarDe(it)===p.n?'selected':''}>Pilar ${p.n} · ${p.curto}</option>`).join("")}</select></div>
-     <div class="duo"><div class="f"><label>Onde está investido</label><input id="i_at" value="${it&&it.at?it.at:''}"></div>
-      <div class="f"><label>Emissor</label><input id="i_em" value="${it&&it.em?it.em:''}"></div></div>
-     <div class="duo"><div class="f"><label>Rentabilidade</label><input id="i_rt" value="${it&&it.rt?it.rt:''}"></div>
-      <div class="f"><label>Prazo de resgate</label><input id="i_pz" value="${it&&it.pz?it.pz:''}"></div></div>
-     <div class="duo"><div class="f"><label>Rent. % a.a.</label><input id="i_aa" inputmode="decimal" value="${it&&it.aa!=null?String(it.aa).replace('.',','):''}"></div>
-      <div class="f"><label>Renda % a.a.</label><input id="i_dy" inputmode="decimal" value="${it&&it.dy!=null?String(it.dy).replace('.',','):''}"></div></div>`;
+      <div class="f"><label>${it?'Guardado':'Saldo inicial'}</label><input id="i_a" inputmode="numeric" ${it?'disabled':''} value="${it?maskMoney(String(Math.round((+it.a||0)*100))):''}" oninput="this.value=maskMoney(this.value)"></div></div>
+     ${it?'<div class="hint" style="margin-top:-4px">O guardado muda só pelos aportes pagos em Pagar.</div>':''}
+     <div class="f"><label>Pilar</label><select id="i_pl">${PILARES.map(p=>`<option value="${p.n}" ${it&&pilarDe(it)===p.n?'selected':''}>Pilar ${p.n} · ${p.curto}</option>`).join("")}</select></div>`;
   }
   h+=`<div class="actions">
     <button class="btn g full" onclick="salvar('${tp}','${id||''}')">Salvar</button>
@@ -2162,10 +2119,10 @@ function salvar(tp,id){
   const g=i=>{const e=$(i);return e?e.value.trim():"";};
   if(tp==="meta"){
     const o={n:g('i_n'),d:g('i_d2'),m:parseMoney(g('i_m')),a:parseMoney(g('i_a')),
-      pilar:+g('i_pl')||4,at:g('i_at'),em:g('i_em'),rt:g('i_rt'),pz:g('i_pz'),aa:parseNum(g('i_aa')),dy:parseNum(g('i_dy'))};
+      pilar:+g('i_pl')||4};
     if(!o.n){ toast("Informe o nome da meta"); return; }
     if(metaDuplicada(o.n,id)){ toast("Já existe uma meta com esse nome"); return; }
-    if(id){Object.assign(D.metas.find(x=>x.id===id),o);} else {D.metas.push({id:uid(),...o});}
+    if(id){ const ex=D.metas.find(x=>x.id===id); o.a=ex?+ex.a||0:0; Object.assign(ex,o); } else {D.metas.push({id:uid(),...o});}
   } else {
     const v=parseMoney(g('i_v'));
     const isSub=g('i_f')==='Assinatura';
@@ -2523,7 +2480,7 @@ const EN={
  "Apagar todos os lançamentos e metas?\nEssa ação não tem volta.":"Delete all entries and goals?\nThis can't be undone.",
  "Este aparelho tem dados de antes do login.\n\nOK = usar os dados deste aparelho\nCancelar = usar os dados da nuvem":"This device has data from before sign-in.\n\nOK = use this device's data\nCancel = use the cloud data",
  "Sair desta conta neste aparelho?":"Sign out of this account on this device?",
- "Resumo do mês":"Month summary","Qual meu maior gasto?":"What's my biggest expense?","Quanto falta pagar?":"How much is left to pay?","Comparar com o mês passado":"Compare with last month","Quanto vou gastar no próximo mês?":"How much will I spend next month?","Toque num mês para abrir.":"Tap a month to open.","Toque num mês.":"Tap a month.", "PDF baixado":"PDF downloaded","Compartilhar indisponível · PDF baixado":"Sharing unavailable · PDF downloaded","Não foi possível gerar o PDF":"Couldn't create the PDF","Data":"Date","do lançamento":"of the entry","Fatura":"Statement","Forma":"Method","Transferência":"Transfer","Escrow":"Escrow","Categorias":"Categories","Você não está conectado":"You're not signed in","Entrar ou criar conta":"Sign in or create account",
+ "Resumo do mês":"Month summary","Qual meu maior gasto?":"What's my biggest expense?","Quanto falta pagar?":"How much is left to pay?","Comparar com o mês passado":"Compare with last month","Quanto vou gastar no próximo mês?":"How much will I spend next month?","Toque num mês para abrir.":"Tap a month to open.","Toque num mês.":"Tap a month.", "PDF baixado":"PDF downloaded","Compartilhar indisponível · PDF baixado":"Sharing unavailable · PDF downloaded","Não foi possível gerar o PDF":"Couldn't create the PDF","Nenhuma meta neste pilar":"No goals in this pillar","Saldo inicial":"Starting balance","Guardado":"Saved","O guardado muda só pelos aportes pagos em Pagar.":"Saved amount only changes through paid contributions in Pay.","Para aportar: Pagar → nova conta → forma Investimento.":"To contribute: Pay → new bill → method Investment.","Nenhuma posição neste pilar.":"No positions in this pillar.","Cadastre na aba Metas.":"Add them in the Goals tab.","Data":"Date","do lançamento":"of the entry","Fatura":"Statement","Forma":"Method","Transferência":"Transfer","Escrow":"Escrow","Categorias":"Categories","Você não está conectado":"You're not signed in","Entrar ou criar conta":"Sign in or create account",
  "Abra pelo endereço jv-bp.vercel.app":"Open it at jv-bp.vercel.app","Sem conexão com a nuvem · verifique a internet":"Can't reach the cloud · check your connection",
  "Servidor sem configuração do Supabase":"Server missing Supabase setup","Gerenciar categorias":"Manage categories","+ Nova categoria":"+ New category","Toque para editar. A cor é automática.":"Tap to edit. The color is automatic.","padrão":"default","personalizada":"custom","Cor automática":"Automatic color","A cor é definida automaticamente.":"The color is set automatically.",
  "Categoria padrão · você pode renomear ou ocultar.":"Default category · you can rename or hide it.","Ocultar categoria":"Hide category","Excluir categoria":"Delete category",
