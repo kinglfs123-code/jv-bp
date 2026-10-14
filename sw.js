@@ -1,4 +1,4 @@
-const CACHE = 'bp-financeiro-v40';
+const CACHE = 'bp-financeiro-v41';
 const ASSETS = ['./index.html','./vendor/supabase.js','./manifest.json','./icon-192.png','./icon-512.png',
                 './icon-maskable.png','./favicon.png'];
 
